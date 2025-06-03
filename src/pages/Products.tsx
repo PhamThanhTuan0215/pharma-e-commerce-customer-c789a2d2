@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { Filter, SlidersHorizontal, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ProductCard from '@/components/ProductCard';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -22,13 +31,14 @@ interface Product {
 }
 
 const Products = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState('popular');
-  const [priceRange, setPriceRange] = useState([0, 1000000]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  // Sample products data with isLiked property
-  const sampleProducts: Product[] = [
+  // Sample products data - expanded for pagination
+  const allProducts: Product[] = [
     {
       id: '1',
       name: 'Paracetamol 500mg - Hộp 100 viên',
@@ -74,8 +84,26 @@ const Products = () => {
       sold: 2341,
       store: 'Nhà thuốc Bình An',
       isLiked: false
-    }
+    },
+    // Additional products for pagination
+    ...Array.from({ length: 26 }, (_, i) => ({
+      id: `${i + 5}`,
+      name: `Sản phẩm ${i + 5}`,
+      price: Math.floor(Math.random() * 1000000) + 10000,
+      originalPrice: Math.floor(Math.random() * 1200000) + 50000,
+      image: '/placeholder.svg',
+      rating: Math.floor(Math.random() * 2) + 4,
+      sold: Math.floor(Math.random() * 5000) + 100,
+      store: ['Nhà thuốc ABC', 'Pharma Store', 'Y tế ABC', 'Nhà thuốc Bình An'][Math.floor(Math.random() * 4)],
+      discount: Math.random() > 0.5 ? Math.floor(Math.random() * 30) + 10 : undefined,
+      freeShipping: Math.random() > 0.5,
+      isLiked: Math.random() > 0.7
+    }))
   ];
+
+  const totalPages = Math.ceil(allProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentProducts = allProducts.slice(startIndex, startIndex + itemsPerPage);
 
   const handleLike = (productId: string) => {
     console.log('Liked product:', productId);
@@ -85,12 +113,16 @@ const Products = () => {
     console.log('Added to cart:', productId);
   };
 
+  const handleProductClick = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
         onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
         cartCount={3}
-        wishlistCount={sampleProducts.filter(p => p.isLiked).length}
+        wishlistCount={allProducts.filter(p => p.isLiked).length}
       />
       
       <div className="flex">
@@ -139,21 +171,68 @@ const Products = () => {
               ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
               : 'grid-cols-1'
           }`}>
-            {sampleProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onLike={handleLike}
-                onAddToCart={handleAddToCart}
-              />
+            {currentProducts.map((product) => (
+              <div key={product.id} onClick={() => handleProductClick(product.id)} className="cursor-pointer">
+                <ProductCard
+                  product={product}
+                  onLike={handleLike}
+                  onAddToCart={handleAddToCart}
+                />
+              </div>
             ))}
           </div>
 
-          {/* Load more */}
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg">
-              Xem thêm sản phẩm
-            </Button>
+          {/* Pagination */}
+          <div className="mt-8 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage > 1) setCurrentPage(currentPage - 1);
+                    }}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+                
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === pageNum}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage(pageNum);
+                        }}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+
+                {totalPages > 5 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                    }}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         </main>
       </div>

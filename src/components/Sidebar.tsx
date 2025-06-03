@@ -1,8 +1,9 @@
 
-import React from 'react';
-import { X, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -78,12 +79,22 @@ const categories = [
 ];
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+  const [openCategories, setOpenCategories] = useState<string[]>([]);
+
+  const toggleCategory = (categoryId: string) => {
+    setOpenCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
   return (
     <>
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
           onClick={onClose}
         />
       )}
@@ -91,11 +102,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       {/* Sidebar */}
       <div
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-80 bg-white border-r
+          fixed md:static inset-y-0 left-0 z-40 w-80 bg-white border-r
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          md:block
+          md:block md:top-16
         `}
+        style={{ height: 'calc(100vh - 4rem)' }}
       >
         <div className="flex items-center justify-between p-4 border-b md:hidden">
           <h2 className="text-lg font-semibold text-gray-900">Danh mục sản phẩm</h2>
@@ -112,17 +124,26 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
             <div className="space-y-2">
               {categories.map((category) => (
-                <div key={category.id} className="group">
-                  <button className="w-full flex items-center justify-between p-3 text-left rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">{category.icon}</span>
-                      <span className="font-medium text-gray-900">{category.name}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                  </button>
+                <Collapsible
+                  key={category.id}
+                  open={openCategories.includes(category.id)}
+                  onOpenChange={() => toggleCategory(category.id)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full flex items-center justify-between p-3 text-left rounded-lg hover:bg-gray-50 transition-colors group">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-lg">{category.icon}</span>
+                        <span className="font-medium text-gray-900">{category.name}</span>
+                      </div>
+                      {openCategories.includes(category.id) ? (
+                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
 
-                  {/* Subcategories */}
-                  <div className="ml-6 mt-1 space-y-1">
+                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
                     {category.subcategories.map((sub) => (
                       <button
                         key={sub}
@@ -131,8 +152,8 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                         {sub}
                       </button>
                     ))}
-                  </div>
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
             </div>
 
