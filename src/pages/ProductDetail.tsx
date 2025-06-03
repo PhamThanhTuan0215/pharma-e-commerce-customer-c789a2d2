@@ -24,7 +24,7 @@ const ProductDetail = () => {
     name: 'Paracetamol 500mg - Hộp 100 viên',
     price: 25000,
     originalPrice: 30000,
-    images: ['/placeholder.svg', '/placeholder.svg', '/placeholder.svg'],
+    images: ['/default-product.png', '/default-product.png', '/default-product.png'],
     rating: 4.5,
     sold: 1234,
     store: 'Nhà thuốc ABC',

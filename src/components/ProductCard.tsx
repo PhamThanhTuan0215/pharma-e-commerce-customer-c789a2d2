@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Heart, Star, ShoppingCart, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,9 +27,15 @@ interface ProductCardProps {
 const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
   const [isLiked, setIsLiked] = useState(product.isLiked || false);
 
-  const handleLike = () => {
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsLiked(!isLiked);
     onLike?.(product.id);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCart?.(product.id);
   };
 
   const formatPrice = (price: number) => {
@@ -44,7 +49,7 @@ const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
     <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={product.image || "/placeholder.svg"}
+          src={product.image || "/default-product.png"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -121,7 +126,7 @@ const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
         <Button
           size="sm"
           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
-          onClick={() => onAddToCart?.(product.id)}
+          onClick={handleAddToCart}
         >
           <ShoppingCart className="w-4 h-4 mr-1" />
           Thêm vào giỏ

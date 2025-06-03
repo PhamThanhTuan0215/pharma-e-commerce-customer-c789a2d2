@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Heart, User, Bell, Menu } from 'lucide-react';
+import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +21,14 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
         {/* Top bar */}
         <div className="flex items-center justify-between py-2 text-sm border-b border-primary-500/30">
           <div className="hidden md:flex items-center space-x-4">
-            <span>Kênh Người Bán</span>
-            <span>Trở thành Người bán Pharma</span>
-            <span>Tải ứng dụng</span>
+            <Link to="#">Kênh người bán</Link>
+            <span>Trở thành Người bán dược phẩm</span>
           </div>
           <div className="flex items-center space-x-4">
             <Bell className="w-4 h-4" />
-            <span className="hidden md:inline">Thông báo</span>
-            <span className="hidden md:inline">Hỗ trợ</span>
-            <span>Tiếng Việt</span>
-            <Link to="/profile">Đăng nhập</Link>
+            <Link to="#">Thông báo</Link>
+            <Link to="#">Hỗ trợ</Link>
+            <Link to="/login">Đăng nhập</Link>
           </div>
         </div>
 
@@ -51,7 +49,7 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
             <div className="bg-white p-2 rounded-lg">
               <div className="w-8 h-8 bg-gradient-to-br from-medical-blue to-medical-green rounded"></div>
             </div>
-            <span className="text-xl font-bold hidden sm:inline">PharmaMart</span>
+            <span className="text-xl font-bold hidden sm:inline">Tuan-Thanh Pharma</span>
           </Link>
 
           {/* Search bar */}
@@ -75,6 +73,13 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
 
           {/* Action buttons */}
           <div className="flex items-center space-x-2">
+            <Link to='/voucher'>
+              <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
+                <Gift className="w-5 h-5" />
+                <span className="hidden md:inline ml-1">Voucher</span>
+              </Button>
+            </Link>
+            
             <Link to="/wishlist">
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <Heart className="w-5 h-5" />
