@@ -15,6 +15,9 @@ interface HeaderProps {
 const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
   return (
     <header className="bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -28,7 +31,14 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
             <Bell className="w-4 h-4" />
             <Link to="#">Thông báo</Link>
             <Link to="#">Hỗ trợ</Link>
-            <Link to="/login">Đăng nhập</Link>
+            {isLoggedIn ? (
+              <Link to="/profile" className="flex items-center space-x-2">
+                <User className="w-4 h-4" />
+                <span>{user.fullname}</span>
+              </Link>
+            ) : (
+              <Link to="/login">Đăng nhập</Link>
+            )}
           </div>
         </div>
 
@@ -49,7 +59,7 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
             <div className="bg-white p-2 rounded-lg">
               <div className="w-8 h-8 bg-gradient-to-br from-medical-blue to-medical-green rounded"></div>
             </div>
-            <span className="text-xl font-bold hidden sm:inline">Tuan-Thanh Pharma</span>
+            <span className="text-xl font-bold hidden sm:inline">{import.meta.env.VITE_APPLICATION_NAME || 'Tuan-Thanh PharmaMart'}</span>
           </Link>
 
           {/* Search bar */}
@@ -101,13 +111,6 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
                   </Badge>
                 )}
                 <span className="hidden md:inline ml-1">Giỏ hàng</span>
-              </Button>
-            </Link>
-
-            <Link to="/profile" className="hidden md:block">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-primary-500">
-                <User className="w-5 h-5 mr-1" />
-                Tài khoản
               </Button>
             </Link>
           </div>

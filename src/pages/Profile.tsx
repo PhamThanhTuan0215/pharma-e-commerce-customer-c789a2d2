@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,16 +8,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import api from '@/services/api';
 
 const Profile = () => {
+  const navigate = useNavigate();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+
+  const [avatarImage, setAvatarImage] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const [previewAvatar, setPreviewAvatar] = useState(null);
+
   const [userInfo, setUserInfo] = useState({
-    name: 'Nguyễn Văn A',
-    email: 'nguyenvana@email.com',
-    phone: '0123456789',
-    birthDate: '1990-01-01',
-    gender: 'Nam'
+    id: '',
+    email: '',
+    fullname: '',
+    phone: '',
+    avatar: '',
+    role: ''
   });
 
   const menuItems = [
@@ -139,7 +154,7 @@ const Profile = () => {
       delivered: { variant: 'default' as const, color: 'bg-green-100 text-green-800' },
       cancelled: { variant: 'destructive' as const, color: 'bg-red-100 text-red-800' }
     };
-    
+
     return statusMap[status as keyof typeof statusMap] || statusMap.pending;
   };
 
@@ -157,7 +172,7 @@ const Profile = () => {
             <TabsTrigger value="delivered">Đã giao</TabsTrigger>
             <TabsTrigger value="cancelled">Đã hủy</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="all" className="space-y-4 mt-6">
             {orders.map((order) => (
               <Card key={order.id} className="border">
@@ -171,7 +186,7 @@ const Profile = () => {
                       {order.statusText}
                     </Badge>
                   </div>
-                  
+
                   <div className="space-y-3">
                     {order.items.map((item) => (
                       <div key={item.id} className="flex items-center space-x-3">
@@ -188,7 +203,7 @@ const Profile = () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
                     <span className="font-medium">
                       Tổng tiền: <span className="text-medical-red">{formatPrice(order.total)}</span>
@@ -215,7 +230,7 @@ const Profile = () => {
               </Card>
             ))}
           </TabsContent>
-          
+
           {['pending', 'shipping', 'delivered', 'cancelled'].map((status) => (
             <TabsContent key={status} value={status} className="mt-6">
               <div className="space-y-4">
@@ -234,7 +249,7 @@ const Profile = () => {
                             {order.statusText}
                           </Badge>
                         </div>
-                        
+
                         <div className="space-y-3">
                           {order.items.map((item) => (
                             <div key={item.id} className="flex items-center space-x-3">
@@ -251,7 +266,7 @@ const Profile = () => {
                             </div>
                           ))}
                         </div>
-                        
+
                         <div className="flex items-center justify-between mt-4 pt-4 border-t">
                           <span className="font-medium">
                             Tổng tiền: <span className="text-medical-red">{formatPrice(order.total)}</span>
@@ -294,88 +309,95 @@ const Profile = () => {
     switch (activeTab) {
       case 'profile':
         return (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Thông tin cá nhân</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                {isEditing ? 'Hủy' : 'Chỉnh sửa'}
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-4 mb-6">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback>NA</AvatarFallback>
-                </Avatar>
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Ảnh đại diện</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-4 mb-6">
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={previewAvatar || userInfo.avatar || '/default-avatar.png'} />
+                    <AvatarFallback>NA</AvatarFallback>
+                  </Avatar>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      onChange={handleAvatarChange}
+                      style={{ display: "none" }}
+                    />
+                    <Button variant="outline" size="sm" onClick={handleChooseAvatar}>
+                      Đổi ảnh đại diện
+                    </Button>
+                    {previewAvatar && <Button variant="outline" size="sm" onClick={handleUpdateAvatar} className="hover:bg-primary-500">
+                      Lưu ảnh
+                    </Button>}
+                  </>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Thông tin cá nhân</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => isEditing ? handleCancelUpdateUserInfo() : setIsEditing(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  {isEditing ? 'Hủy' : 'Chỉnh sửa'}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="fullname">Họ và tên</Label>
+                    <Input
+                      id="fullname"
+                      name="fullname"
+                      value={userInfo.fullname}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={userInfo.email}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Số điện thoại</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={userInfo.phone}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
                 {isEditing && (
-                  <Button variant="outline" size="sm">
-                    Đổi ảnh đại diện
-                  </Button>
+                  <div className="flex space-x-2 pt-4">
+                    <Button onClick={handleUpdateUserInfo} className="bg-primary-600 hover:bg-primary-700">
+                      Lưu thay đổi
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelUpdateUserInfo}>
+                      Hủy
+                    </Button>
+                  </div>
                 )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Họ và tên</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={userInfo.name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={userInfo.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Số điện thoại</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={userInfo.phone}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="birthDate">Ngày sinh</Label>
-                  <Input
-                    id="birthDate"
-                    name="birthDate"
-                    type="date"
-                    value={userInfo.birthDate}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-              </div>
-
-              {isEditing && (
-                <div className="flex space-x-2 pt-4">
-                  <Button className="bg-primary-600 hover:bg-primary-700">
-                    Lưu thay đổi
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Hủy
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </>
         );
 
       case 'orders':
@@ -468,10 +490,170 @@ const Profile = () => {
     }
   };
 
+  // đăng xuất
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('isLoggedIn');
+
+    setIsLoggedIn(false);
+    setUser(null);
+
+    toast({
+      variant: 'success',
+      description: 'Đăng xuất thành công',
+    });
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate]);
+
+  // lấy thông tin người dùng
+  const getUserInfo = async () => {
+    if (!isLoggedIn) return;
+
+    if (user.id) {
+      api.get(`/user/users/${user.id}`)
+        .then((response) => {
+          if (response.data.code === 0) {
+            const userInfo = response.data.data;
+            setUserInfo({
+              id: userInfo.id,
+              email: userInfo.email,
+              fullname: userInfo.fullname,
+              phone: userInfo.phone,
+              avatar: userInfo.avatar,
+              role: userInfo.role,
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        });
+    }
+  }
+
+  // Chỉnh sửa thông tin cá nhân
+  const handleUpdateUserInfo = async () => {
+    if (!isLoggedIn) return;
+
+    if (userInfo.id) {
+      api.put(`/user/users`, userInfo)
+        .then((response) => {
+          if (response.data.code === 0) {
+            const user = response.data.data;
+            localStorage.setItem('user', JSON.stringify(user));
+
+            setUser(user);
+            setIsEditing(false);
+
+            toast({
+              variant: 'success',
+              description: response.data.message,
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        });
+    }
+  }
+
+  // Cập nhật ảnh đại diện
+  const handleUpdateAvatar = async () => {
+
+    const formData = new FormData();
+    formData.append('image', avatarImage);
+
+    await api.post(`/user/users/${user.id}/update-avatar`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const newAvatar = response.data.data.avatar;
+
+          const updatedUser = {
+            ...user,
+            avatar: newAvatar
+          };
+          setUser(updatedUser);
+          setUserInfo(prev => ({
+            ...prev,
+            avatar: newAvatar
+          }));
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+
+          setAvatarImage(null);
+          setPreviewAvatar(null);
+
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+
+  }
+
+  // Chọn ảnh đại diện
+  const handleChooseAvatar = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const imageURL = URL.createObjectURL(file);
+      setPreviewAvatar(imageURL); // hiển thị ảnh tạm
+      setAvatarImage(file);
+    }
+  };
+
+  // Hủy chỉnh sửa thông tin cá nhân
+  const handleCancelUpdateUserInfo = () => {
+    setUserInfo({
+      id: user.id,
+      email: user.email,
+      fullname: user.fullname,
+      phone: user.phone,
+      avatar: user.avatar,
+      role: user.role,
+    });
+
+    setPreviewAvatar(null);
+
+    setIsEditing(false);
+  }
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log(user.avatar);
+
+    getUserInfo();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} cartCount={3} wishlistCount={5} />
-      
+      <Header onMenuClick={() => { }} cartCount={3} wishlistCount={5} />
+
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar menu */}
@@ -484,7 +666,7 @@ const Profile = () => {
                     <AvatarFallback>NA</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{userInfo.name}</p>
+                    <p className="font-medium">{userInfo.fullname}</p>
                     <p className="text-sm text-gray-600">{userInfo.email}</p>
                   </div>
                 </div>
@@ -495,17 +677,16 @@ const Profile = () => {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === item.id 
-                          ? 'bg-primary-50 text-primary-600 border-r-2 border-primary-600' 
-                          : 'text-gray-700'
-                      }`}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === item.id
+                        ? 'bg-primary-50 text-primary-600 border-r-2 border-primary-600'
+                        : 'text-gray-700'
+                        }`}
                     >
                       <item.icon className="w-5 h-5" />
                       <span>{item.label}</span>
                     </button>
                   ))}
-                  <button className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors text-red-600">
+                  <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors text-red-600">
                     <LogOut className="w-5 h-5" />
                     <span>Đăng xuất</span>
                   </button>

@@ -1,26 +1,104 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '@/services/api';
+import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true'); // kiểm tra xem người dùng đã đăng nhập hay chưa
+  const [isLogin, setIsLogin] = useState(true); // kiểm tra xem người dùng đang ở trang đăng nhập hay đăng ký
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
-    name: '',
+    fullname: '',
     phone: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/');
+    }
+  }, [isLoggedIn, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+
+    // login
+    if (isLogin) {
+      try {
+        const response = await api.post('/user/users/login', formData);
+        if(response.data.code === 0) {
+          localStorage.setItem('user', JSON.stringify(response.data.data.user));
+          localStorage.setItem('accessToken', response.data.data.accessToken);
+          localStorage.setItem('refreshToken', response.data.data.refreshToken);
+          localStorage.setItem('isLoggedIn', 'true');
+
+          setIsLoggedIn(true);
+
+          toast({
+            variant: "success",
+            description: response.data.message
+          });
+        }
+      } catch (error) {
+        toast({
+          variant: "error",
+          description: error.response.data.message || error.message
+        });
+      }
+    }
+
+    // register
+    if (!isLogin) {
+      if(formData.fullname === '' || formData.phone === '' || formData.email === '' || formData.password === '' || formData.confirmPassword === '') {
+        toast({
+          variant: "error",
+          description: "Vui lòng điền đầy đủ thông tin"
+        });
+        return;
+      }
+
+      if(formData.password !== formData.confirmPassword) {
+        toast({
+          variant: "error",
+          description: "Mật khẩu không khớp"
+        });
+        return;
+      }
+
+      try {
+        const response = await api.post('/user/users/register', formData);
+        if(response.data.code === 0) {
+          toast({
+            variant: "success",
+            description: response.data.message
+          });
+
+          setFormData({
+            fullname: '',
+            phone: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+          });
+
+          setIsLogin(true);
+        }
+      } catch (error) {
+        toast({
+          variant: "error",
+          description: error.response.data.message || error.message
+        });
+      }
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +127,7 @@ const Login = () => {
             </CardTitle>
             <p className="text-gray-600">
               {isLogin 
-                ? 'Chào mừng bạn quay trở lại PharmaMart' 
+                ? `Chào mừng bạn quay trở lại ${import.meta.env.VITE_APPLICATION_NAME || 'Tuan-Thanh PharmaMart'}` 
                 : 'Tạo tài khoản mới để bắt đầu mua sắm'
               }
             </p>
@@ -60,12 +138,12 @@ const Login = () => {
               {!isLogin && (
                 <>
                   <div>
-                    <Label htmlFor="name">Họ và tên</Label>
+                    <Label htmlFor="fullname">Họ và tên</Label>
                     <Input
-                      id="name"
-                      name="name"
+                      id="fullname"
+                      name="fullname"
                       type="text"
-                      value={formData.name}
+                      value={formData.fullname}
                       onChange={handleInputChange}
                       placeholder="Nhập họ và tên"
                       required
