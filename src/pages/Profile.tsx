@@ -572,10 +572,12 @@ const Profile = () => {
   // Cập nhật ảnh đại diện
   const handleUpdateAvatar = async () => {
 
+    if (!isLoggedIn) return;
+
     const formData = new FormData();
     formData.append('image', avatarImage);
 
-    await api.post(`/user/users/${user.id}/update-avatar`, formData, {
+    api.post(`/user/users/${user.id}/update-avatar`, formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }

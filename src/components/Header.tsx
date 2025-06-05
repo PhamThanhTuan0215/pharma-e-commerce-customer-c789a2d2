@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,13 +9,21 @@ interface HeaderProps {
   onMenuClick: () => void;
   cartCount?: number;
   wishlistCount?: number;
+  onSearch?: (query: string) => void;
 }
 
-const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) => {
+const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0, onSearch }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const handleLogoClick = () => {
+    // nếu hiện tại đang ở trang chủ thì reload lại chính nó để làm mới dữ liệu
+    if (window.location.pathname === '/') {
+      window.location.reload();
+    }
+  };
 
   return (
     <header className="bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg sticky top-0 z-50">
@@ -55,7 +62,7 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
           </Button>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/" onClick={handleLogoClick} className="flex items-center space-x-2">
             <div className="bg-white p-2 rounded-lg">
               <div className="w-8 h-8 bg-gradient-to-br from-medical-blue to-medical-green rounded"></div>
             </div>
@@ -69,12 +76,20 @@ const Header = ({ onMenuClick, cartCount = 0, wishlistCount = 0 }: HeaderProps) 
                 type="text"
                 placeholder="Tìm kiếm thuốc, thực phẩm chức năng, dụng cụ y tế..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onSearch?.(searchQuery);
+                  }
+                }}
                 className="w-full pl-4 pr-12 py-2 rounded-lg border-0 bg-white text-gray-900"
               />
               <Button
                 size="sm"
                 className="absolute right-1 top-1 h-8 px-3 bg-medical-orange hover:bg-medical-orange/90"
+                onClick={() => onSearch?.(searchQuery)}
               >
                 <Search className="w-4 h-4" />
               </Button>

@@ -1,92 +1,69 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { toast } from '@/hooks/use-toast';
+import api from '@/services/api';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onSelectCategory: (category: string) => void;
+  onSelectBrand: (brand: string) => void;
+  onSelectProductType: (productType: string) => void;
 }
 
-const categories = [
-  {
-    id: 'otc',
-    name: 'Thuốc không kê đơn (OTC)',
-    icon: '💊',
-    subcategories: [
-      'Thuốc cảm cúm',
-      'Thuốc giảm đau hạ sốt',
-      'Thuốc ho, long đờm',
-      'Thuốc đau bụng, tiêu hóa',
-      'Thuốc dị ứng',
-      'Thuốc bôi ngoài da'
-    ]
-  },
-  {
-    id: 'supplement',
-    name: 'Thực phẩm chức năng',
-    icon: '🌿',
-    subcategories: [
-      'Vitamin tổng hợp',
-      'Canxi & Vitamin D',
-      'Omega 3',
-      'Probiotics',
-      'Thực phẩm cho tim mạch',
-      'Thực phẩm cho não bộ',
-      'Thực phẩm cho xương khớp'
-    ]
-  },
-  {
-    id: 'medical-device',
-    name: 'Dụng cụ y tế',
-    icon: '🩺',
-    subcategories: [
-      'Máy đo huyết áp',
-      'Máy đo đường huyết',
-      'Nhiệt kế',
-      'Khẩu trang y tế',
-      'Băng gạc, cotton',
-      'Ống tiêm, kim tiêm',
-      'Máy massage'
-    ]
-  },
-  {
-    id: 'baby-mom',
-    name: 'Mẹ và bé',
-    icon: '👶',
-    subcategories: [
-      'Sữa bột',
-      'Tã em bé',
-      'Đồ dùng cho bé',
-      'Vitamin cho bé',
-      'Sản phẩm cho mẹ bầu'
-    ]
-  },
-  {
-    id: 'beauty',
-    name: 'Làm đẹp & chăm sóc',
-    icon: '💄',
-    subcategories: [
-      'Kem chống nắng',
-      'Sản phẩm trị mụn',
-      'Kem dưỡng da',
-      'Serum',
-      'Sản phẩm tắm gội'
-    ]
-  }
-];
-
-const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectProductType }: SidebarProps) => {
+  const [productTypes, setProductTypes] = useState([]);
   const [openCategories, setOpenCategories] = useState<string[]>([]);
 
+  const [brands, setBrands] = useState([]);
+
+  const fetchProductTypes = async () => {
+    api.get('/product/product-types/full-list-product-type')
+      .then((response) => {
+        if (response.data.code === 0) {
+          const productTypes = response.data.data;
+          setProductTypes(productTypes);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  };
+
+  const fetchBrands = async () => {
+    api.get('/product/products/brands')
+      .then((response) => {
+        if (response.data.code === 0) {
+          const brands = response.data.data;
+          setBrands(brands);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  };
+
   const toggleCategory = (categoryId: string) => {
-    setOpenCategories(prev => 
+    setOpenCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
     );
   };
+
+  useEffect(() => {
+    fetchProductTypes();
+    fetchBrands();
+  }, []);
 
   return (
     <>
@@ -123,19 +100,21 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               </h3>
 
               <div className="space-y-2">
-                {categories.map((category) => (
+                {productTypes.map((productType) => (
                   <Collapsible
-                    key={category.id}
-                    open={openCategories.includes(category.id)}
-                    onOpenChange={() => toggleCategory(category.id)}
+                    key={productType.product_type_id}
+                    open={openCategories.includes(productType.product_type_id)}
+                    onOpenChange={() => {
+                      onSelectProductType(productType.product_type_name);
+                      toggleCategory(productType.product_type_id);
+                    }}
                   >
                     <CollapsibleTrigger asChild>
                       <button className="w-full flex items-center justify-between p-3 text-left rounded-lg hover:bg-gray-50 transition-colors group">
                         <div className="flex items-center space-x-3">
-                          <span className="text-lg">{category.icon}</span>
-                          <span className="font-medium text-gray-900">{category.name}</span>
+                          <span className="font-medium text-gray-900">{productType.product_type_name}</span>
                         </div>
-                        {openCategories.includes(category.id) ? (
+                        {openCategories.includes(productType.product_type_id) ? (
                           <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                         ) : (
                           <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
@@ -144,12 +123,13 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     </CollapsibleTrigger>
 
                     <CollapsibleContent className="ml-6 mt-1 space-y-1">
-                      {category.subcategories.map((sub) => (
+                      {productType.categories.map((category) => (
                         <button
-                          key={sub}
+                          key={category.category_id}
                           className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                          onClick={() => onSelectCategory(category.category_name)}
                         >
-                          {sub}
+                          {category.category_name}
                         </button>
                       ))}
                     </CollapsibleContent>
@@ -163,10 +143,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                   Thương hiệu nổi bật
                 </h4>
                 <div className="space-y-2">
-                  {['Taisho', 'Blackmores', 'DHG Pharma', 'Hasan-Dewi', 'Abbott', 'Pfizer'].map((brand) => (
+                  {brands.map((brand) => (
                     <button
                       key={brand}
                       className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                      onClick={() => onSelectBrand(brand)}
                     >
                       {brand}
                     </button>

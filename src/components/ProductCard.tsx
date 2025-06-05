@@ -7,15 +7,13 @@ import { Card, CardContent } from '@/components/ui/card';
 interface Product {
   id: string;
   name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  rating: number;
-  sold: number;
-  store: string;
-  discount?: number;
-  freeShipping?: boolean;
+  retail_price: number;
+  url_image: string;
+  seller_name: string;
   isLiked?: boolean;
+  product_details: {
+    [key: string]: string;
+  }
 }
 
 interface ProductCardProps {
@@ -49,79 +47,49 @@ const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
     <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={product.image || "/default-product.png"}
+          src={product.url_image || "/default-product.png"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        
-        {/* Discount badge */}
-        {product.discount && (
-          <Badge className="absolute top-2 left-2 bg-medical-red text-white">
-            -{product.discount}%
-          </Badge>
-        )}
 
         {/* Like button */}
         <Button
           variant="ghost"
           size="sm"
-          className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${
-            isLiked ? 'text-red-500 bg-white/90' : 'text-gray-400 bg-white/90 hover:text-red-500'
-          }`}
+          className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${isLiked ? 'text-red-500 bg-white/90' : 'text-gray-400 bg-white/90 hover:text-red-500'
+            }`}
           onClick={handleLike}
         >
           <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
         </Button>
 
-        {/* Free shipping badge */}
-        {product.freeShipping && (
-          <Badge className="absolute bottom-2 left-2 bg-medical-green text-white text-xs">
-            <Package className="w-3 h-3 mr-1" />
-            Freeship
-          </Badge>
-        )}
       </div>
 
       <CardContent className="p-3">
-        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]">
-          {product.name}
-        </h3>
-
-        <div className="flex items-center mb-2">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-3 h-3 ${
-                  i < Math.floor(product.rating)
-                    ? 'text-yellow-400 fill-current'
-                    : 'text-gray-300'
-                }`}
-              />
-            ))}
-            <span className="text-xs text-gray-500 ml-1">
-              ({product.rating})
-            </span>
-          </div>
-          <span className="text-xs text-gray-500 ml-auto">
-            Đã bán {product.sold}
-          </span>
-        </div>
+        {product.product_details?.["Tên hiển thị"] ? <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]">
+          {product.product_details?.["Tên hiển thị"]}
+        </h3> :
+          <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]">
+            {product.name}
+          </h3>
+        }
 
         <div className="flex items-center justify-between mb-2">
           <div>
             <span className="text-lg font-bold text-medical-red">
-              {formatPrice(product.price)}
+              {formatPrice(product.retail_price)}
             </span>
-            {product.originalPrice && (
-              <span className="text-sm text-gray-500 line-through ml-2">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
+            {product.product_details?.["Đơn vị tính"] && <span className="text-sm text-gray-500 ml-2">
+              / {product.product_details?.["Đơn vị tính"]}
+            </span>}
           </div>
         </div>
 
-        <div className="text-xs text-gray-500 mb-3">{product.store}</div>
+        {product.product_details?.["Quy cách"] && <h3 className="text-sm font-medium text-gray-900 text-medical-blue min-h-[2rem]">
+          {product.product_details?.["Quy cách"]}
+        </h3>}
+
+        <div className="text-xs text-gray-500 mb-3">{product.seller_name}</div>
 
         <Button
           size="sm"
