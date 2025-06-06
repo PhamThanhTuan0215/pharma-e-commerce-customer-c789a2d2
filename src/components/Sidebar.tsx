@@ -19,8 +19,11 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
   const [openCategories, setOpenCategories] = useState<string[]>([]);
 
   const [brands, setBrands] = useState([]);
+  const [isProductTypesLoading, setIsProductTypesLoading] = useState(true);
+  const [isBrandsLoading, setIsBrandsLoading] = useState(false);
 
   const fetchProductTypes = async () => {
+    setIsProductTypesLoading(true);
     productApi.get('/product-types/full-list-product-type')
       .then((response) => {
         if (response.data.code === 0) {
@@ -33,10 +36,14 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      })
+      .finally(() => {
+        setIsProductTypesLoading(false);
       });
   };
 
   const fetchBrands = async () => {
+    setIsBrandsLoading(true);
     productApi.get('/products/brands')
       .then((response) => {
         if (response.data.code === 0) {
@@ -49,6 +56,9 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      })
+      .finally(() => {
+        setIsBrandsLoading(false);
       });
   };
 
@@ -100,41 +110,47 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
               </h3>
 
               <div className="space-y-2">
-                {productTypes.map((productType) => (
-                  <Collapsible
-                    key={productType.product_type_id}
-                    open={openCategories.includes(productType.product_type_id)}
-                    onOpenChange={() => {
-                      onSelectProductType(productType.product_type_name);
-                      toggleCategory(productType.product_type_id);
-                    }}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button className="w-full flex items-center justify-between p-3 text-left rounded-lg hover:bg-gray-50 transition-colors group">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-medium text-gray-900">{productType.product_type_name}</span>
-                        </div>
-                        {openCategories.includes(productType.product_type_id) ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                        )}
-                      </button>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent className="ml-6 mt-1 space-y-1">
-                      {productType.categories.map((category) => (
-                        <button
-                          key={category.category_id}
-                          className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                          onClick={() => onSelectCategory(category.category_name)}
-                        >
-                          {category.category_name}
+                {isProductTypesLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+                  </div>
+                ) : (
+                  productTypes.map((productType) => (
+                    <Collapsible
+                      key={productType.product_type_id}
+                      open={openCategories.includes(productType.product_type_id)}
+                      onOpenChange={() => {
+                        onSelectProductType(productType.product_type_name);
+                        toggleCategory(productType.product_type_id);
+                      }}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center justify-between p-3 text-left rounded-lg hover:bg-gray-50 transition-colors group">
+                          <div className="flex items-center space-x-3">
+                            <span className="font-medium text-gray-900">{productType.product_type_name}</span>
+                          </div>
+                          {openCategories.includes(productType.product_type_id) ? (
+                            <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                          )}
                         </button>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
+                      </CollapsibleTrigger>
+
+                      <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                        {productType.categories.map((category) => (
+                          <button
+                            key={category.category_id}
+                            className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                            onClick={() => onSelectCategory(category.category_name)}
+                          >
+                            {category.category_name}
+                          </button>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))
+                )}
               </div>
 
               {/* Popular brands */}
@@ -143,15 +159,21 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
                   Thương hiệu nổi bật
                 </h4>
                 <div className="space-y-2">
-                  {brands.map((brand) => (
-                    <button
-                      key={brand}
-                      className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                      onClick={() => onSelectBrand(brand)}
-                    >
-                      {brand}
-                    </button>
-                  ))}
+                  {isBrandsLoading ? (
+                    <div className="animate-pulse">
+                      <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+                    </div>
+                  ) : (
+                    brands.map((brand) => (
+                      <button
+                        key={brand}
+                        className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                        onClick={() => onSelectBrand(brand)}
+                      >
+                        {brand}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

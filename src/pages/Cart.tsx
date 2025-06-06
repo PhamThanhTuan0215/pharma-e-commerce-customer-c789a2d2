@@ -1,62 +1,97 @@
-
-import React, { useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Package } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Minus, Plus, Trash2, ShoppingCart, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
 import { Link } from 'react-router-dom';
+import customerApi from '@/services/api-customer-service';
+import { toast } from '@/hooks/use-toast';
+
+interface CartItem {
+  id: string;
+  user_id: string;
+  product_id: string;
+  product_name: string;
+  price: string;
+  product_url_image: string;
+  quantity: number;
+  seller_id: string;
+  seller_name: string;
+  selected?: boolean;
+}
+interface Store {
+  seller_id: string;
+  seller_name: string;
+  total_quantity: number;
+  total_price: number;
+  products: CartItem[];
+}
 
 // Mock cart data grouped by store
-const mockCartItems = [
-  {
-    storeId: '1',
-    storeName: 'Nhà thuốc ABC',
-    freeShippingThreshold: 300000,
-    items: [
-      {
-        id: '1',
-        name: 'Panadol Extra Forte 500mg',
-        price: 125000,
-        originalPrice: 150000,
-        image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=300',
-        quantity: 2,
-        selected: true
-      },
-      {
-        id: '2',
-        name: 'Vitamin C 1000mg',
-        price: 89000,
-        image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300',
-        quantity: 1,
-        selected: true
-      }
-    ]
-  },
-  {
-    storeId: '2',
-    storeName: 'Medical Equipment Store',
-    freeShippingThreshold: 500000,
-    items: [
-      {
-        id: '3',
-        name: 'Máy đo huyết áp Omron HEM-7120',
-        price: 1250000,
-        originalPrice: 1500000,
-        image: 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=300',
-        quantity: 1,
-        selected: false
-      }
-    ]
-  }
-];
+// const mockCartItems = [
+//   {
+//     seller_id: '1',
+//     seller_name: 'ABC Store',
+//     total_quantity: 4,
+//     total_price: 41000,
+//     products: [
+//       {
+//         id: '18',
+//         user_id: '1',
+//         product_id: '1',
+//         product_name: 'Kem bôi da Ketoconazol 2%',
+//         price: '11000',
+//         product_url_image: 'https://res.cloudinary.com/dyacy1md1/image/upload/v1747463989/ecommerce-pharmacy/products/jrxob9mq3cj0wsruixl4.jpg',
+//         quantity: 3,
+//         seller_id: '1',
+//         seller_name: 'ABC Store',
+//         selected: true
+//       },
+//       {
+//         id: '19',
+//         user_id: '1',
+//         product_id: '2',
+//         product_name: 'Bông y tế',
+//         price: '8000',
+//         product_url_image: 'https://res.cloudinary.com/dyacy1md1/image/upload/v1747731300/ecommerce-pharmacy/products/oqjacwdsz7yoepau8e99.webp',
+//         quantity: 1,
+//         seller_id: '1',
+//         seller_name: 'ABC Store',
+//         selected: true
+//       }
+//     ]
+//   },
+//   {
+//     seller_id: '2',
+//     seller_name: 'DEF Store',
+//     total_quantity: 2,
+//     total_price: 30000,
+//     products: [
+//       {
+//         id: '20',
+//         user_id: '1',
+//         product_id: '3',
+//         product_name: 'Túi chườm nóng',
+//         price: '15000',
+//         product_url_image: 'https://res.cloudinary.com/dyacy1md1/image/upload/v1747731300/ecommerce-pharmacy/products/oqjacwdsz7yoepau8e99.webp',
+//         quantity: 2,
+//         seller_id: '2',
+//         seller_name: 'DEF Store',
+//         selected: true
+//       }
+//     ]
+//   }
+// ];
 
 const Cart = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [cartData, setCartData] = useState(mockCartItems);
+  const [cartData, setCartData] = useState([]);
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -65,46 +100,98 @@ const Cart = () => {
     }).format(price);
   };
 
-  const updateQuantity = (storeId: string, itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
-    setCartData(prev => 
-      prev.map(store => 
-        store.storeId === storeId 
+  const increaseQuantity = (item: CartItem) => {
+
+    const payload = {
+      user_id: user.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_url_image: item.product_url_image,
+      price: item.price,
+      seller_id: item.seller_id,
+      seller_name: item.seller_name,
+      quantity: 1
+    }
+
+    customerApi.post(`/carts/add`, payload)
+      .then((response) => {
+        if (response.data.code === 0) {
+
+          const cartItem = response.data.data;
+          // cập nhật lại cartData
+          setCartData(prev =>
+            prev.map(store =>
+              store.seller_id === cartItem.seller_id
+                ? { ...store, total_quantity: store.total_quantity + 1, products: store.products.map(item => item.id === cartItem.id ? { ...item, quantity: item.quantity + 1 } : item) }
+                : store
+            )
+          );
+
+          console.log(response.data.message);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  };
+
+  const decreaseQuantity = (item: CartItem) => {
+
+    if(item.quantity <= 1) {
+      return;
+    }
+
+    customerApi.delete(`/carts/reduce/${item.id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+
+          const cartItem = response.data.data;
+
+          setCartData(prev =>
+            prev.map(store =>
+              store.seller_id === cartItem.seller_id
+                ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.map(item => item.id === cartItem.id ? { ...item, quantity: item.quantity - 1 } : item) }
+                : store
+            )
+          );
+
+          console.log(response.data.message);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  }
+
+  const toggleItemSelection = (sellerId: string, itemId: string) => {
+    setCartData(prev =>
+      prev.map(store =>
+        store.seller_id === sellerId
           ? {
-              ...store,
-              items: store.items.map(item => 
-                item.id === itemId ? { ...item, quantity: newQuantity } : item
-              )
-            }
+            ...store,
+            products: store.products.map(item =>
+              item.id === itemId ? { ...item, selected: !item.selected } : item
+            )
+          }
           : store
       )
     );
   };
 
-  const toggleItemSelection = (storeId: string, itemId: string) => {
-    setCartData(prev => 
-      prev.map(store => 
-        store.storeId === storeId 
-          ? {
-              ...store,
-              items: store.items.map(item => 
-                item.id === itemId ? { ...item, selected: !item.selected } : item
-              )
-            }
-          : store
-      )
-    );
-  };
-
-  const toggleStoreSelection = (storeId: string) => {
-    setCartData(prev => 
+  const toggleStoreSelection = (sellerId: string) => {
+    setCartData(prev =>
       prev.map(store => {
-        if (store.storeId === storeId) {
-          const allSelected = store.items.every(item => item.selected);
+        if (store.seller_id === sellerId) {
+          const allSelected = store.products.every(item => item.selected);
           return {
             ...store,
-            items: store.items.map(item => ({ ...item, selected: !allSelected }))
+            products: store.products.map(item => ({ ...item, selected: !allSelected }))
           };
         }
         return store;
@@ -112,18 +199,35 @@ const Cart = () => {
     );
   };
 
-  const removeItem = (storeId: string, itemId: string) => {
-    setCartData(prev => 
-      prev.map(store => 
-        store.storeId === storeId 
-          ? { ...store, items: store.items.filter(item => item.id !== itemId) }
-          : store
-      ).filter(store => store.items.length > 0)
-    );
+  const removeItem = (item: CartItem) => {
+
+    customerApi.delete(`/carts/remove/${item.id}`)
+    .then((response) => {
+      if (response.data.code === 0) {
+
+        const cartItem = response.data.data;
+
+        setCartData(prev =>
+          prev.map(store =>
+            store.seller_id === cartItem.seller_id
+              ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.filter(item => item.id !== cartItem.id) }
+              : store
+          ).filter(store => store.products.length > 0)
+        );
+
+        console.log(response.data.message);
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    });
   };
 
   const getStoreTotal = (store: any) => {
-    return store.items
+    return store.products
       .filter((item: any) => item.selected)
       .reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
   };
@@ -132,25 +236,76 @@ const Cart = () => {
     return cartData.reduce((total, store) => total + getStoreTotal(store), 0);
   };
 
+  const getStoreQuantity = (store: any) => {
+    return store.products.reduce((total: number, item: any) => total + item.quantity, 0);
+  };
+
+  const getTotalQuantity = () => {
+    return cartData.reduce((total, store) => total + getStoreQuantity(store), 0);
+  };
+
   const getSelectedItemsCount = () => {
-    return cartData.reduce((count, store) => 
-      count + store.items.filter(item => item.selected).length, 0
+    return cartData.reduce((count, store) =>
+      count + store.products.filter(item => item.selected).length, 0
     );
   };
 
-  const totalItems = cartData.reduce((total, store) => total + store.items.length, 0);
+  const fetchCartData = async () => {
+    setIsLoading(true);
+    const params = {
+      user_id: user.id
+    }
+
+    customerApi.get(`/carts`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const cartData = response.data.data;
+          // thêm tự động selected = true cho tất cả các sản phẩm
+          cartData.forEach((store: any) => {
+            store.products.forEach((item: any) => {
+              item.selected = true;
+            });
+          });
+          setCartData(cartData);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchCartData();
+  }, []);
+
+  if (isLoading) {
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+            <div className="">
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        onMenuClick={() => setSidebarOpen(true)}
-        cartCount={totalItems}
-        wishlistCount={0}
-      />
+      <Header />
 
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
         <main className="flex-1 min-h-screen">
           {/* Breadcrumb */}
           <div className="bg-white border-b px-4 py-3">
@@ -168,11 +323,11 @@ const Cart = () => {
             <div className="flex items-center gap-3 mb-6">
               <ShoppingCart className="w-6 h-6 text-primary-600" />
               <h1 className="text-2xl font-bold text-gray-900">
-                Giỏ hàng ({totalItems})
+                Giỏ hàng ({getTotalQuantity()})
               </h1>
             </div>
 
-            {totalItems === 0 ? (
+            {getTotalQuantity() === 0 ? (
               /* Empty cart */
               <Card className="text-center py-12">
                 <CardContent>
@@ -195,103 +350,82 @@ const Cart = () => {
                 {/* Cart items */}
                 <div className="lg:col-span-2 space-y-4">
                   {cartData.map((store) => (
-                    <Card key={store.storeId}>
+                    <Card key={store.seller_id}>
                       <CardContent className="p-4">
                         {/* Store header */}
                         <div className="flex items-center gap-3 mb-4">
                           <Checkbox
-                            checked={store.items.every(item => item.selected)}
-                            onCheckedChange={() => toggleStoreSelection(store.storeId)}
+                            checked={store.products.every(item => item.selected)}
+                            onCheckedChange={() => toggleStoreSelection(store.seller_id)}
                           />
-                          <Package className="w-5 h-5 text-primary-600" />
-                          <span className="font-medium text-gray-900">{store.storeName}</span>
-                          {getStoreTotal(store) >= store.freeShippingThreshold && (
-                            <Badge className="bg-medical-green text-white">Freeship</Badge>
-                          )}
-                        </div>
-
-                        {/* Free shipping progress */}
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-gray-600">
-                              Mua thêm {formatPrice(Math.max(0, store.freeShippingThreshold - getStoreTotal(store)))} để được freeship
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-medical-green h-2 rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, (getStoreTotal(store) / store.freeShippingThreshold) * 100)}%`
-                              }}
-                            />
-                          </div>
+                          <Store className="w-5 h-5 text-primary-600" />
+                          <span className="font-medium text-gray-900">{store.seller_name}</span>
                         </div>
 
                         {/* Store items */}
                         <div className="space-y-4">
-                          {store.items.map((item) => (
-                            <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                              <Checkbox
-                                checked={item.selected}
-                                onCheckedChange={() => toggleItemSelection(store.storeId, item.id)}
-                              />
-                              
-                              <img
-                                src={item.image || "/placeholder.svg"}
-                                alt={item.name}
-                                className="w-16 h-16 object-cover rounded"
-                              />
+                          {store.products.map((item) => (
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 bg-gray-50 rounded-lg justify-between">
+                              <div className="flex items-center gap-4 w-full sm:w-auto">
+                                <Checkbox
+                                  checked={item.selected}
+                                  onCheckedChange={() => toggleItemSelection(store.seller_id, item.id)}
+                                />
 
-                              <div className="flex-1">
-                                <h4 className="font-medium text-gray-900 mb-1">{item.name}</h4>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg font-bold text-medical-red">
-                                    {formatPrice(item.price)}
-                                  </span>
-                                  {item.originalPrice && (
-                                    <span className="text-sm text-gray-500 line-through">
-                                      {formatPrice(item.originalPrice)}
+                                <img
+                                  src={item.product_url_image || "/default-product.png"}
+                                  alt={item.product_name}
+                                  className="w-16 h-16 object-cover rounded"
+                                />
+
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900 mb-1">{item.product_name}</h4>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg font-bold text-medical-red">
+                                      {formatPrice(Number(item.price))}
                                     </span>
-                                  )}
+                                  </div>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => decreaseQuantity(item)}
+                                    disabled={item.quantity <= 1}
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </Button>
+                                  <span className="w-8 text-center">{item.quantity}</span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => increaseQuantity(item)}
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </div>
+
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={() => updateQuantity(store.storeId, item.id, item.quantity - 1)}
-                                  disabled={item.quantity <= 1}
+                                  className="text-medical-red hover:text-medical-red hover:bg-red-50"
+                                  onClick={() => removeItem(item)}
                                 >
-                                  <Minus className="w-4 h-4" />
-                                </Button>
-                                <span className="w-8 text-center">{item.quantity}</span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => updateQuantity(store.storeId, item.id, item.quantity + 1)}
-                                >
-                                  <Plus className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
-
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-medical-red hover:text-medical-red hover:bg-red-50"
-                                onClick={() => removeItem(store.storeId, item.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
                           ))}
                         </div>
 
                         <Separator className="my-4" />
-                        
+
                         {/* Store total */}
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Tổng đơn hàng ({store.storeName}):</span>
+                          <span className="text-gray-600">Tổng đơn hàng ({store.seller_name}):</span>
                           <span className="text-lg font-bold text-primary-600">
                             {formatPrice(getStoreTotal(store))}
                           </span>
@@ -306,25 +440,35 @@ const Cart = () => {
                   <Card className="sticky top-4">
                     <CardContent className="p-4">
                       <h3 className="text-lg font-semibold mb-4">Tóm tắt đơn hàng</h3>
-                      
+
                       <div className="space-y-3 mb-4">
-                        <div className="flex justify-between">
+
+                        {/* <div className="flex justify-between">
                           <span className="text-gray-600">Tạm tính ({getSelectedItemsCount()} sản phẩm):</span>
                           <span>{formatPrice(getGrandTotal())}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Phí vận chuyển:</span>
-                          <span className="text-medical-green">Miễn phí</span>
-                        </div>
+                        </div> */}
+
+                        {cartData.map((store) => (
+                          <div className="flex justify-between" key={store.seller_id}>
+                            <span>{store.seller_name} ({getStoreQuantity(store)} sản phẩm)</span>
+                            <span>{formatPrice(getStoreTotal(store))}</span>
+                          </div>
+                        ))}
+
                         <Separator />
+                        <div className="flex justify-between text-lg font-bold">
+                          <span>Tổng số sản phẩm:</span>
+                          <span className="text-medical-blue">{getTotalQuantity()}</span>
+                        </div>
                         <div className="flex justify-between text-lg font-bold">
                           <span>Tổng cộng:</span>
                           <span className="text-medical-red">{formatPrice(getGrandTotal())}</span>
                         </div>
+                        <span className="text-gray-500 text-sm italic">(không bao gồm phí vận chuyển)</span>
                       </div>
 
                       <Link to="/checkout">
-                        <Button 
+                        <Button
                           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
                           disabled={getSelectedItemsCount() === 0}
                         >

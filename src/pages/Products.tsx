@@ -15,16 +15,35 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import api from '@/services/api';
+import productApi from '@/services/api-product-service';
+import customerApi from '@/services/api-customer-service';
 import { toast } from '@/hooks/use-toast';
+
+// products mock data
+// const allProducts: Product[] = [
+//   {
+//     id: '1',
+//     name: 'Kem bôi da Ketoconazol 2%',
+//     retail_price: 25000,
+//     url_image: 'default-product.png',
+//     seller_name: 'ABC Store',
+//     isLiked: false,
+//     product_details: {
+//       "Tên hiển thị": "Kem bôi da Ketoconazol 2% Medipharco điều trị các bệnh nấm da và niêm mạc (10g)",
+//       "Đơn vị tính": "Hộp",
+//       "Quy cách": "Hộp x 10g"
+//     }
+//   }
+// ];
 
 interface Product {
   id: string;
   name: string;
   retail_price: number;
+  stock: number;
   url_image: string;
+  seller_id: string;
   seller_name: string;
-  isLiked?: boolean;
   product_details: {
     [key: string]: string;
   }
@@ -46,6 +65,11 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [totalPages, setTotalPages] = useState(0);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
+
+  const [isLoading, setIsLoading] = useState(false);
+
   const [filters, setFilters] = useState({
     page: currentPage,
     limit: itemsPerPage,
@@ -56,41 +80,6 @@ const Products = () => {
     category_name: null,
     sort_price: null, // '', 'asc' or 'desc'
   });
-
-  // Sample products data - expanded for pagination
-  // const allProducts: Product[] = [
-  //   {
-  //     id: '1',
-  //     name: 'Kem bôi da Ketoconazol 2%',
-  //     retail_price: 25000,
-  //     url_image: 'default-product.png',
-  //     seller_name: 'ABC Store',
-  //     isLiked: false,
-  //     product_details: {
-  //       "Tên hiển thị": "Kem bôi da Ketoconazol 2% Medipharco điều trị các bệnh nấm da và niêm mạc (10g)",
-  //       "Đơn vị tính": "Hộp",
-  //       "Quy cách": "Hộp x 10g"
-  //     }
-  //   },
-  //   // Additional products for pagination
-  //   ...Array.from({ length: 26 }, (_, i) => ({
-  //     id: `${i + 2}`,
-  //     name: `Sản phẩm ${i + 2}`,
-  //     retail_price: Math.floor(Math.random() * 1000000) + 10000,
-  //     url_image: 'default-product.png',
-  //     seller_name: ['Nhà thuốc ABC', 'Pharma Store', 'Y tế ABC', 'Nhà thuốc Bình An'][Math.floor(Math.random() * 4)],
-  //     isLiked: Math.random() > 0.7,
-  //     product_details: {
-  //       "Tên hiển thị": `Sản phẩm ${i + 2} Medipharco điều trị các bệnh nấm da và niêm mạc (10g)`,
-  //       "Đơn vị tính": "hộp",
-  //       "Quy cách": "Hộp x 10g"
-  //     }
-  //   }))
-  // ];
-
-  const handleLike = (productId: string) => {
-    console.log('Liked product:', productId);
-  };
 
   const handleProductTypeSelect = (productType: string) => {
     setFilters({
@@ -114,6 +103,8 @@ const Products = () => {
       sort_price: null,
       page: 1
     });
+
+    setIsSidebarOpen(false);
   };
 
   const handleBrandSelect = (brand: string) => {
@@ -126,6 +117,8 @@ const Products = () => {
       sort_price: null,
       page: 1
     });
+
+    setIsSidebarOpen(false);
   };
 
   const handleSearch = (query: string) => {
@@ -140,17 +133,125 @@ const Products = () => {
     });
   };
 
-  const handleAddToCart = (productId: string) => {
-    console.log('Added to cart:', productId);
+  const handleToggleWishlist = (product: Product) => {
+
+    if (productIdsInWishlist.includes(product.id)) {
+
+      const params = {
+        user_id: user.id,
+        product_id: product.id
+      }
+
+      customerApi.delete(`/wishlists/remove`, { params })
+        .then((response) => {
+          if (response.data.code === 0) {
+            const wilistItemDeleted = response.data.data;
+            setProductIdsInWishlist(productIdsInWishlist.filter(id => id !== wilistItemDeleted.product_id));
+
+            toast({
+              variant: 'success',
+              description: response.data.message,
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        });
+    }
+    else {
+      const payload = {
+        user_id: user.id,
+        product_id: product.id,
+        product_name: product.name,
+        product_url_image: product.url_image,
+        price: product.retail_price,
+        seller_id: product.seller_id,
+        seller_name: product.seller_name
+      }
+
+      customerApi.post(`/wishlists/add`, payload)
+        .then((response) => {
+          if (response.data.code === 0) {
+            const wishlistItemAdded = response.data.data;
+            setProductIdsInWishlist([...productIdsInWishlist, wishlistItemAdded.product_id]);
+
+            toast({
+              variant: 'success',
+              description: response.data.message,
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        });
+    }
+  };
+
+  const handleAddToCart = (product: Product) => {
+
+    const payload = {
+      user_id: user.id,
+      product_id: product.id,
+      product_name: product.name,
+      product_url_image: product.url_image,
+      price: product.retail_price,
+      seller_id: product.seller_id,
+      seller_name: product.seller_name,
+      quantity: 1
+    }
+
+    customerApi.post(`/carts/add`, payload)
+      .then((response) => {
+        if (response.data.code === 0) {
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+
   };
 
   const handleProductClick = (productId: string) => {
-    navigate(`/product/${productId}`);
+    navigate(`/products/${productId}`);
   };
 
-  const fetchProducts = async () => {
+  const fetchProductIdsInWishlist = async () => {
 
-    api('product').get('/products/list-product', {
+    const params = {
+      user_id: user.id
+    }
+
+    customerApi.get(`/wishlists/product-ids`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const productIds = response.data.data;
+          setProductIdsInWishlist(productIds);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  }
+
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    productApi.get('/products/list-product', {
       params: {
         page: currentPage,
         limit: itemsPerPage,
@@ -175,6 +276,9 @@ const Products = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }
 
@@ -197,14 +301,31 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
+    fetchProductIdsInWishlist();
   }, [filters, currentPage]);
+
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50">
+  //       <Header isShowMenu={true} onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearch={handleSearch} />
+  //       <div className="container mx-auto px-4 py-6">
+  //         <div className="animate-pulse">
+  //           <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+  //           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+  //             <div className="aspect-square bg-gray-200 rounded-lg"></div>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
+        isShowMenu={true}
+        isEnableSearchBar={true}
         onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        cartCount={3}
-        wishlistCount={products.filter(p => p.isLiked).length}
         onSearch={handleSearch}
       />
 
@@ -318,16 +439,25 @@ const Products = () => {
           </div>
 
           {/* Products grid */}
-          <div className={`grid gap-4 ${viewMode === 'grid'
-              ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-              : 'grid-cols-1'
+          {isLoading ? (
+            <div className="animate-pulse">
+              <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              </div>
+            </div>
+          ) : (
+             <div className={`grid gap-4 ${viewMode === 'grid'
+            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+            : 'grid-cols-1'
             }`}>
             {products.length > 0 ? products.map((product) => (
               <div key={product.id} onClick={() => handleProductClick(product.id)} className="cursor-pointer">
                 <ProductCard
                   product={product}
-                  onLike={handleLike}
+                  onToggleWishlist={handleToggleWishlist}
                   onAddToCart={handleAddToCart}
+                  isInWishlist={productIdsInWishlist.includes(product.id)}
                 />
               </div>
             )) : (
@@ -336,6 +466,7 @@ const Products = () => {
               </div>
             )}
           </div>
+          )}
 
           {/* Pagination */}
           {totalPages > 0 && (

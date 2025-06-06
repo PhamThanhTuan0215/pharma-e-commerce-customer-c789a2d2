@@ -8,9 +8,10 @@ interface Product {
   id: string;
   name: string;
   retail_price: number;
+  stock: number;
   url_image: string;
+  seller_id: string;
   seller_name: string;
-  isLiked?: boolean;
   product_details: {
     [key: string]: string;
   }
@@ -18,22 +19,21 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
-  onLike?: (productId: string) => void;
-  onAddToCart?: (productId: string) => void;
+  onToggleWishlist?: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+  isInWishlist?: boolean;
 }
 
-const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
-  const [isLiked, setIsLiked] = useState(product.isLiked || false);
+const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: ProductCardProps) => {
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleToggleWishlist = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    onLike?.(product.id);
+    onToggleWishlist?.(product);
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onAddToCart?.(product.id);
+    onAddToCart?.(product);
   };
 
   const formatPrice = (price: number) => {
@@ -56,11 +56,11 @@ const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${isLiked ? 'text-red-500 bg-white/90' : 'text-gray-400 bg-white/90 hover:text-red-500'
+          className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${isInWishlist ? 'text-red-500 bg-white/90' : 'text-gray-400 bg-white/90 hover:text-red-500'
             }`}
-          onClick={handleLike}
+          onClick={handleToggleWishlist}
         >
-          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+          <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current' : ''}`} />
         </Button>
 
       </div>
@@ -89,11 +89,12 @@ const ProductCard = ({ product, onLike, onAddToCart }: ProductCardProps) => {
           {product.product_details?.["Quy cách"]}
         </h3>}
 
-        <div className="text-xs text-gray-500 mb-3">{product.seller_name}</div>
+        <div className="text-xs text-gray-500 mb-3">{product.seller_name} - {product.stock > 0 ? <span className="text-green-500">Còn hàng</span> : <span className="text-red-500">Hết hàng</span>}</div>
 
         <Button
           size="sm"
           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+          disabled={product.stock === 0}
           onClick={handleAddToCart}
         >
           <ShoppingCart className="w-4 h-4 mr-1" />

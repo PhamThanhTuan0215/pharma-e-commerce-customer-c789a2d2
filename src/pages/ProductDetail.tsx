@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Package, Shield, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,53 +9,84 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Header from '@/components/Header';
+import productApi from '@/services/api-product-service';
+import customerApi from '@/services/api-customer-service';
+import { toast } from '@/hooks/use-toast';
+
+interface ProductComponent {
+  Tên: string;
+  "Hàm lượng": string;
+}
+
+interface ProductDetails {
+  [key: string]: string | ProductComponent[];
+}
+
+interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  retail_price: number;
+  stock: number;
+  seller_id: string;
+  seller_name: string;
+  url_image: string;
+  url_images: string[];
+  product_details: ProductDetails;
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
-  const [isLiked, setIsLiked] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock product data
-  const product = {
-    id: id,
-    name: 'Paracetamol 500mg - Hộp 100 viên',
-    price: 25000,
-    originalPrice: 30000,
-    images: ['/default-product.png', '/default-product.png', '/default-product.png'],
-    rating: 4.5,
-    sold: 1234,
-    store: 'Nhà thuốc ABC',
-    discount: 17,
-    freeShipping: true,
-    description: 'Paracetamol là thuốc giảm đau, hạ sốt được sử dụng rộng rãi. Thuốc có tác dụng giảm đau nhẹ đến vừa và hạ sốt hiệu quả.',
-    ingredients: 'Paracetamol 500mg',
-    dosage: 'Người lớn: Uống 1-2 viên mỗi lần, 3-4 lần/ngày. Không quá 8 viên/ngày.',
-    contraindications: 'Không dùng cho người mẫn cảm với Paracetamol.',
-    storage: 'Bảo quản nơi khô ráo, thoáng mát, tránh ánh sáng.',
-    stock: 156
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+
+  const fetchProduct = async () => {
+    setIsLoading(true);
+    productApi.get(`/products/display-for-customer/${id}`)
+    .then((response) => {
+      if (response.data.code === 0) {
+        const productData = response.data.data;
+        setProduct(productData);
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    })
+    .finally(() => {
+      setIsLoading(false);
+    });
   };
 
-  const reviews = [
-    {
-      id: 1,
-      user: 'Nguyễn Văn A',
-      rating: 5,
-      date: '2024-01-15',
-      comment: 'Thuốc rất hiệu quả, giảm đau nhanh. Đóng gói cẩn thận.',
-      avatar: '/placeholder.svg'
-    },
-    {
-      id: 2,
-      user: 'Trần Thị B',
-      rating: 4,
-      date: '2024-01-10',
-      comment: 'Chất lượng tốt, giao hàng nhanh. Sẽ mua lại.',
-      avatar: '/placeholder.svg'
-    }
-  ];
+  const fetchReviews = async () => {
+    productApi.get(`/reviews/${id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          const reviews = response.data.data;
+          setReviews(reviews);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  };
+
+  useEffect(() => {
+    fetchProduct();
+    fetchReviews();
+  }, [id]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -66,18 +97,139 @@ const ProductDetail = () => {
 
   const handleSubmitReview = () => {
     console.log('Submitting review:', { rating: reviewRating, text: reviewText });
+
+    if (reviewText.length < 5) {
+      toast({
+        variant: 'error',
+        description: 'Nhận xét phải có ít nhất 5 ký tự',
+      });
+      return;
+    }
+
+    const params = {
+      user_id: user.id,
+      user_fullname: user.fullname,
+    }
+
+    const payload = {
+      rating: reviewRating,
+      comment: reviewText,
+    }
+
+    productApi.post(`/reviews/add/${id}`, payload, { params })
+    .then((response) => {
+      if (response.data.code === 0) {
+        const newReview = response.data.data;
+        // cập nhật lại review nếu đã tồn tại hoặc thêm mới nếu chưa tồn tại
+        const existingReview = reviews.find((review) => review.id === newReview.id);
+        if (existingReview) {
+          const updatedReviews = reviews.map((review) => review.id === newReview.id ? newReview : review);
+          setReviews(updatedReviews);
+        } else {
+          setReviews([newReview, ...reviews]);
+        }
+
+        toast({
+          variant: 'success',
+          description: response.data.message,
+        });
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    })
+
     setReviewText('');
     setReviewRating(5);
   };
 
+  const getProductDetail = (key: string): string => {
+    const value = product?.product_details[key];
+    return typeof value === 'string' ? value : '';
+  };
+
+  const handleAddToCart = () => {
+    const payload = {
+      user_id: user.id,
+      product_id: product.id,
+      product_name: product.name,
+      product_url_image: product.url_image,
+      price: product.retail_price,
+      seller_id: product.seller_id,
+      seller_name: product.seller_name,
+      quantity: quantity
+    }
+
+    customerApi.post(`/carts/add`, payload)
+    .then((response) => {
+      if (response.data.code === 0) {
+        toast({
+          variant: 'success',
+          description: response.data.message,
+        });
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header onMenuClick={() => { }} />
+        <div className="container mx-auto px-4 py-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              <div className="space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header onMenuClick={() => { }} />
+        <div className="container mx-auto px-4 py-6">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-gray-900">Không tìm thấy sản phẩm</h2>
+            <Button
+              variant="ghost"
+              className="mt-4"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Quay lại
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} cartCount={3} wishlistCount={5} />
-      
+      <Header onMenuClick={() => { }} />
+
       <div className="container mx-auto px-4 py-6">
         {/* Back button */}
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="mb-4"
           onClick={() => navigate(-1)}
         >
@@ -90,13 +242,13 @@ const ProductDetail = () => {
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg bg-white">
               <img
-                src={product.images[0]}
+                src={product.url_image}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {product.images.map((image, index) => (
+            {/* <div className="grid grid-cols-3 gap-2">
+              {product.url_images.map((image, index) => (
                 <div key={index} className="aspect-square overflow-hidden rounded-lg bg-white border-2 border-gray-200">
                   <img
                     src={image}
@@ -105,62 +257,154 @@ const ProductDetail = () => {
                   />
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
 
           {/* Product info */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <div className="flex items-center space-x-4 mb-4">
                 <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.floor(product.rating)
-                          ? 'text-yellow-400 fill-current'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                  <span className="text-sm text-gray-600 ml-2">
-                    ({product.rating}) • Đã bán {product.sold}
+                  <span className="text-sm text-gray-600">
+                    Thương hiệu: &nbsp;
+                  </span>
+                  <span className="text-sm font-bold text-blue-500">
+                    {product.brand}
                   </span>
                 </div>
               </div>
-              
+
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{getProductDetail("Tên hiển thị") || product.name}</h1>
+
               <div className="flex items-center space-x-4 mb-4">
                 <span className="text-3xl font-bold text-medical-red">
-                  {formatPrice(product.price)}
+                  {formatPrice(product.retail_price)}
                 </span>
-                {product.originalPrice && (
-                  <>
-                    <span className="text-lg text-gray-500 line-through">
-                      {formatPrice(product.originalPrice)}
-                    </span>
-                    <Badge className="bg-medical-red text-white">
-                      -{product.discount}%
-                    </Badge>
-                  </>
-                )}
               </div>
 
-              <div className="flex items-center space-x-4 mb-6">
-                {product.freeShipping && (
-                  <Badge className="bg-medical-green text-white">
-                    <Package className="w-3 h-3 mr-1" />
-                    Freeship
+              {getProductDetail("Đơn vị tính") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Đơn vị tính: &nbsp;
+                      <span className="text-sm font-bold rounded-full border-2 border-blue-300 px-2 py-1">
+                        {getProductDetail("Đơn vị tính")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Quy cách") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Quy cách: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Quy cách")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Dạng bào chế") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Dạng bào chế: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Dạng bào chế")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Nhà sản xuất") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Nhà sản xuất: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Nhà sản xuất")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Nước sản xuất") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Nước sản xuất: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Nước sản xuất")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Xuất xứ thương hiệu") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Xuất xứ thương hiệu: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Xuất xứ thương hiệu")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Số đăng ký") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Số đăng ký: &nbsp;
+                      <span className="text-sm font-bold">
+                        {getProductDetail("Số đăng ký")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Mô tả ngắn") && (
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600">
+                      Mô tả ngắn: &nbsp;
+                      <span className="text-sm text-black">
+                        {getProductDetail("Mô tả ngắn")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {getProductDetail("Yêu cầu kê đơn") === "Không" && (
+                <div className="flex items-center space-x-4 mb-6">
+                  <Badge variant="outline" className="bg-medical-green text-white">
+                    Không kê đơn
                   </Badge>
-                )}
-                <Badge variant="outline">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Chính hãng
-                </Badge>
-                <Badge variant="outline">
-                  <Truck className="w-3 h-3 mr-1" />
-                  Giao nhanh
-                </Badge>
+                </div>
+              )}
+
+            </div>
+
+            {/* nhà bán */}
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-600">
+                  Nhà bán: &nbsp;
+                  <span className="text-sm font-bold text-blue-500">
+                    {product.seller_name}
+                  </span>
+                </span>
               </div>
             </div>
 
@@ -191,191 +435,140 @@ const ProductDetail = () => {
                   </Button>
                 </div>
                 <span className="text-sm text-gray-600">
-                  {product.stock} sản phẩm có sẵn
+                  {product.stock} sản phẩm còn lại
                 </span>
               </div>
 
               <div className="flex space-x-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsLiked(!isLiked)}
-                >
-                  <Heart className={`w-4 h-4 mr-2 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-                  Yêu thích
-                </Button>
-                <Button className="flex-1 bg-primary-600 hover:bg-primary-700">
+                <Button disabled={product.stock === 0} onClick={handleAddToCart} className="flex-1 bg-primary-600 hover:bg-primary-700">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Thêm vào giỏ
                 </Button>
               </div>
-
-              <Button size="lg" className="w-full bg-medical-red hover:bg-red-700">
-                Mua ngay
-              </Button>
             </div>
 
-            {/* Store info */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback>NT</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-medium">{product.store}</h3>
-                    <p className="text-sm text-gray-600">Online 2 giờ trước</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Chat</Button>
-                    <Button variant="outline" size="sm">Xem shop</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
 
-        {/* Product details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Mô tả sản phẩm</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Công dụng:</h4>
-                  <p className="text-gray-600">{product.description}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Thành phần:</h4>
-                  <p className="text-gray-600">{product.ingredients}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Liều dùng:</h4>
-                  <p className="text-gray-600">{product.dosage}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Chống chỉ định:</h4>
-                  <p className="text-gray-600">{product.contraindications}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Bảo quản:</h4>
-                  <p className="text-gray-600">{product.storage}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Reviews */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Đánh giá sản phẩm</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Existing reviews */}
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="border-b pb-4 last:border-b-0">
-                      <div className="flex items-start space-x-3">
-                        <Avatar>
-                          <AvatarImage src={review.avatar} />
-                          <AvatarFallback>{review.user[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium">{review.user}</span>
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-3 h-3 ${
-                                    i < review.rating
-                                      ? 'text-yellow-400 fill-current'
-                                      : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-sm text-gray-500">{review.date}</span>
-                          </div>
-                          <p className="text-gray-600">{review.comment}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Write review */}
-                <div className="border-t pt-6">
-                  <h4 className="font-medium mb-4">Viết đánh giá</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Đánh giá của bạn:</Label>
-                      <div className="flex items-center space-x-1 mt-2">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-6 h-6 cursor-pointer ${
-                              i < reviewRating
-                                ? 'text-yellow-400 fill-current'
-                                : 'text-gray-300 hover:text-yellow-400'
-                            }`}
-                            onClick={() => setReviewRating(i + 1)}
-                          />
+        {/* Thông tin chi tiết và đánh giá */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Thông tin chi tiết */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Thông tin chi tiết sản phẩm</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Object.entries(product.product_details).map(([key, value]) => {
+                // Xử lý đặc biệt cho trường "Thành phần" vì nó là một mảng
+                if (key === "Thành phần" && Array.isArray(value)) {
+                  return (
+                    <div key={key}>
+                      <h4 className="font-medium mb-2">{key}:</h4>
+                      <div className="space-y-2">
+                        {(value as ProductComponent[]).map((item, index) => (
+                          <p key={index} className="text-gray-600">
+                            {item.Tên}: {item["Hàm lượng"]}
+                          </p>
                         ))}
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="review">Nhận xét:</Label>
-                      <Textarea
-                        id="review"
-                        value={reviewText}
-                        onChange={(e) => setReviewText(e.target.value)}
-                        placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
-                        className="mt-2"
-                      />
-                    </div>
-                    <Button onClick={handleSubmitReview} className="bg-primary-600 hover:bg-primary-700">
-                      Gửi đánh giá
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  );
+                }
 
-          {/* Related products */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Sản phẩm liên quan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                      <img
-                        src="/placeholder.svg"
-                        alt={`Related product ${i}`}
-                        className="w-16 h-16 object-cover rounded"
-                      />
+                return (
+                  <div key={key}>
+                    <h4 className="font-medium mb-2">{key}:</h4>
+                    <p className="text-gray-600 whitespace-pre-line">{value as string}</p>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Reviews */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Đánh giá sản phẩm</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* avg rating */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Đánh giá trung bình:</span>
+                {reviews.length > 0 ? <span className="text-sm font-bold text-blue-500">{reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length} / 5</span> : <span className="text-sm font-bold text-blue-500">Chưa có đánh giá</span>}  
+              </div>
+
+              {/* Existing reviews */}
+              {reviews.length > 0 ? <div className="space-y-4">
+                {reviews.map((review) => (
+                  <div key={review.id} className="border-b pb-4 last:border-b-0">
+                    <div className="flex items-start space-x-3">
+                      <Avatar>
+                        <AvatarFallback>{review.user_fullname[0]}</AvatarFallback>
+                      </Avatar>
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium line-clamp-2">
-                          Sản phẩm liên quan {i}
-                        </h4>
-                        <p className="text-sm text-medical-red font-medium">
-                          {formatPrice(50000 + i * 10000)}
-                        </p>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-medium">{review.user_fullname}</span>
+                          {/* số sao có thể là số lẻ */}
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${i < Math.round(review.rating)
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {new Date(review.updatedAt).toLocaleDateString('vi-VN')}
+                          </span>
+                        </div>
+                        <p className="text-gray-600">{review.comment}</p>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div> : <div className="space-y-4">
+                <p className="text-gray-600">Chưa có đánh giá nào</p>
+              </div>}
+
+              {/* Write review */}
+              <div className="border-t pt-6">
+                <h4 className="font-medium mb-4">Viết đánh giá</h4>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Đánh giá của bạn:</Label>
+                    <div className="flex items-center space-x-1 mt-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-6 h-6 cursor-pointer ${i < reviewRating
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300 hover:text-yellow-400'
+                            }`}
+                          onClick={() => setReviewRating(i + 1)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="review">Nhận xét:</Label>
+                    <Textarea
+                      id="review"
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
+                      className="mt-2"
+                    />
+                  </div>
+                  <Button onClick={handleSubmitReview} className="bg-primary-600 hover:bg-primary-700">
+                    Gửi đánh giá
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

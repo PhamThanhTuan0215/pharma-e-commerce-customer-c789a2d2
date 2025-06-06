@@ -1,96 +1,101 @@
-
-import React, { useState } from 'react';
-import { Gift, Clock, Tag, Truck, Store, Calendar, Copy } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Gift, Clock, Tag, Truck, Store, Calendar, Copy, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
+import discountApi from '@/services/api-discount-service';
+import { toast } from '@/hooks/use-toast';
 
-interface VoucherItem {
+// mock vouchers data
+// const mockAvailableVouchers : Voucher[] = [
+//   {
+//     id: '16',
+//     code: '2WQqxuub8D',
+//     description: 'Giảm tối đa 10K cho đơn từ 20K',
+//     type: 'freeship',
+//     discount_unit: 'percent',
+//     discount_value: 15,
+//     min_order_value: 25000,
+//     max_discount_value: 10000,
+//     end_date: '2025-07-28T23:59:59.000Z',
+//     issuer_type: 'platform',
+//     issuer_id: null,
+//     issuer_name: null
+//   }
+// ];
+
+// const mockUsageVouchers : Voucher[] = [
+//   {
+//     id: '1',
+//     description: 'Giảm tối đa 10K cho đơn từ 20K',
+//     code: '2WQqxuub8D',
+//     type: 'order',
+//     discount_unit: 'amount',
+//     discount_value: 5000,
+//     min_order_value: 25000,
+//     max_discount_value: 5000,
+//     issuer_type: 'shop',
+//     issuer_id: '1',
+//     issuer_name: 'ABC Store',
+//     discount_amount: 5000,
+//     usedAt: '2025-06-06T14:33:04.328Z',
+//   }
+// ]
+
+interface Voucher {
   id: string;
-  title: string;
   description: string;
   code: string;
-  discount: string;
-  minOrder: number;
-  maxDiscount?: number;
-  expiryDate: string;
-  type: 'platform' | 'store' | 'shipping';
-  storeName?: string;
-  used: boolean;
-  available: number;
+  type: 'order' | 'freeship';
+  discount_unit: 'amount' | 'percent';
+  discount_value: number;
+  min_order_value?: number;
+  max_discount_value?: number;
+  end_date?: string | null;
+  issuer_type: 'platform' | 'shop';
+  issuer_id: string;
+  issuer_name?: string;
+  //
+  order_id?: string | null;
+  discount_amount?: number | null;
+  usedAt?: string | null; // ngày áp dụng
 }
 
 const Voucher = () => {
-  const [activeTab, setActiveTab] = useState<'available' | 'used' | 'expired'>('available');
-  const [filterType, setFilterType] = useState<'all' | 'platform' | 'store' | 'shipping'>('all');
+  const [activeTab, setActiveTab] = useState<'available' | 'used'>('available');
+  const [filterType, setFilterType] = useState<'all' | 'platform' | 'shop'>('all');
 
-  const vouchers: VoucherItem[] = [
-    {
-      id: '1',
-      title: 'Giảm 50K cho đơn từ 200K',
-      description: 'Áp dụng cho tất cả sản phẩm trên sàn',
-      code: 'PHARMA50K',
-      discount: '50.000đ',
-      minOrder: 200000,
-      maxDiscount: 50000,
-      expiryDate: '2024-12-31',
-      type: 'platform',
-      used: false,
-      available: 1000
-    },
-    {
-      id: '2',
-      title: 'Miễn phí vận chuyển',
-      description: 'Freeship toàn quốc cho đơn từ 99K',
-      code: 'FREESHIP99',
-      discount: 'Freeship',
-      minOrder: 99000,
-      expiryDate: '2024-11-30',
-      type: 'shipping',
-      used: false,
-      available: 500
-    },
-    {
-      id: '3',
-      title: 'Giảm 20% tối đa 100K',
-      description: 'Chỉ áp dụng cho nhà thuốc ABC',
-      code: 'ABC20PERCENT',
-      discount: '20%',
-      minOrder: 150000,
-      maxDiscount: 100000,
-      expiryDate: '2024-12-15',
-      type: 'store',
-      storeName: 'Nhà thuốc ABC',
-      used: false,
-      available: 200
-    },
-    {
-      id: '4',
-      title: 'Giảm 30K cho lần đầu mua',
-      description: 'Dành cho khách hàng mới',
-      code: 'WELCOME30',
-      discount: '30.000đ',
-      minOrder: 100000,
-      expiryDate: '2024-10-31',
-      type: 'platform',
-      used: true,
-      available: 0
-    }
-  ];
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  const [isAvailableVouchersLoading, setIsAvailableVouchersLoading] = useState(false);
+  const [isUsedVouchersLoading, setIsUsedVouchersLoading] = useState(false);
 
-  const filteredVouchers = vouchers.filter(voucher => {
-    if (activeTab === 'used' && !voucher.used) return false;
-    if (activeTab === 'available' && voucher.used) return false;
-    if (activeTab === 'expired') {
-      const today = new Date();
-      const expiry = new Date(voucher.expiryDate);
-      return expiry < today;
+  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
+  const [usedVouchers, setUsedVouchers] = useState<Voucher[]>([]);
+
+  const [filteredVouchers, setFilteredVouchers] = useState<Voucher[]>([]);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
+  useEffect(() => {
+    if(activeTab === 'available') {
+      setFilteredVouchers(availableVouchers.filter(voucher => {
+        if(filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+        return true;
+      }));
+    } else {
+      setFilteredVouchers(usedVouchers.filter(voucher => {
+        if(filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+        return true;
+      }));
     }
-    if (filterType !== 'all' && voucher.type !== filterType) return false;
-    return true;
-  });
+  }, [activeTab, filterType]);
 
   const copyVoucherCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -101,8 +106,7 @@ const Voucher = () => {
   const getVoucherIcon = (type: string) => {
     switch (type) {
       case 'platform': return <Gift className="w-5 h-5 text-medical-blue" />;
-      case 'store': return <Store className="w-5 h-5 text-medical-green" />;
-      case 'shipping': return <Truck className="w-5 h-5 text-medical-orange" />;
+      case 'shop': return <Store className="w-5 h-5 text-medical-green" />;
       default: return <Tag className="w-5 h-5" />;
     }
   };
@@ -110,8 +114,7 @@ const Voucher = () => {
   const getVoucherTypeLabel = (type: string) => {
     switch (type) {
       case 'platform': return 'Sàn';
-      case 'store': return 'Cửa hàng';
-      case 'shipping': return 'Vận chuyển';
+      case 'shop': return 'Cửa hàng';
       default: return '';
     }
   };
@@ -119,15 +122,113 @@ const Voucher = () => {
   const getVoucherTypeBadgeColor = (type: string) => {
     switch (type) {
       case 'platform': return 'bg-blue-100 text-blue-800';
-      case 'store': return 'bg-green-100 text-green-800';
-      case 'shipping': return 'bg-orange-100 text-orange-800';
+      case 'shop': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const fetchAvailableVouchers = () => {
+    const params = {
+      user_id: user.id,
+    }
+
+    setIsAvailableVouchersLoading(true);
+
+    discountApi.get('voucher-usages/all-avaiable-vouchers', { params })
+    .then((response) => {
+      if (response.data.code === 0) {
+        const availableVouchers = response.data.data;
+        setAvailableVouchers(availableVouchers);
+        setFilteredVouchers(availableVouchers);
+
+        console.log(response.data.message);
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    })
+    .finally(() => {
+      setIsAvailableVouchersLoading(false);
+    });
+  }
+
+  const fetchUsageVouchers = () => {
+
+    const params = {
+      user_id: user.id,
+    }
+
+    setIsUsedVouchersLoading(true);
+
+    discountApi.get('voucher-usages/get-by-user', { params })
+    .then((response) => {
+      if (response.data.code === 0) {
+        const usedVouchers = response.data.data;
+
+        // format lại định dạng voucher để lưu vào setUsedVouchers
+
+        const formattedUsedVouchers = usedVouchers.map((usageVoucher) => {
+          return {
+            id: usageVoucher.voucher.id,
+            description: usageVoucher.voucher.description,
+            code: usageVoucher.voucher.code,
+            type: usageVoucher.voucher.type,
+            discount_unit: usageVoucher.voucher.discount_unit,
+            discount_value: usageVoucher.voucher.discount_value,
+            min_order_value: usageVoucher.voucher.min_order_value,
+            max_discount_value: usageVoucher.voucher.max_discount_value,
+            issuer_type: usageVoucher.voucher.issuer_type,
+            issuer_id: usageVoucher.voucher.issuer_id,
+            issuer_name: usageVoucher.voucher.issuer_name,
+            order_id: usageVoucher.order_id,
+            discount_amount: usageVoucher.discount_amount,
+            usedAt: usageVoucher.createdAt,
+          }
+        });
+
+        setUsedVouchers(formattedUsedVouchers);
+
+        console.log(response.data.message);
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    })
+    .finally(() => {
+      setIsUsedVouchersLoading(false);
+    });
+  }
+
+  useEffect(() => {
+    fetchAvailableVouchers();
+    fetchUsageVouchers();
+  }, []);
+
+  if(isAvailableVouchersLoading || isUsedVouchersLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+            <div className="">
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} cartCount={3} wishlistCount={5} />
+      <Header />
       
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">
@@ -136,7 +237,7 @@ const Voucher = () => {
         </div>
 
         {/* Voucher Input */}
-        <Card className="mb-6">
+        {/* <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex space-x-2">
               <Input 
@@ -148,14 +249,13 @@ const Voucher = () => {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Tabs */}
         <div className="flex space-x-1 mb-6 bg-white rounded-lg p-1">
           {[
-            { key: 'available', label: 'Có thể sử dụng', count: vouchers.filter(v => !v.used).length },
-            { key: 'used', label: 'Đã sử dụng', count: vouchers.filter(v => v.used).length },
-            { key: 'expired', label: 'Hết hạn', count: 0 }
+            { key: 'available', label: 'Có thể sử dụng', count: availableVouchers.length },
+            { key: 'used', label: 'Đã sử dụng', count: usedVouchers.length }
           ].map(tab => (
             <button
               key={tab.key}
@@ -189,20 +289,12 @@ const Voucher = () => {
             Voucher sàn
           </Button>
           <Button
-            variant={filterType === 'store' ? 'default' : 'outline'}
+            variant={filterType === 'shop' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilterType('store')}
+            onClick={() => setFilterType('shop')}
           >
             <Store className="w-4 h-4 mr-1" />
             Voucher cửa hàng
-          </Button>
-          <Button
-            variant={filterType === 'shipping' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterType('shipping')}
-          >
-            <Truck className="w-4 h-4 mr-1" />
-            Voucher vận chuyển
           </Button>
         </div>
 
@@ -217,52 +309,72 @@ const Voucher = () => {
             </Card>
           ) : (
             filteredVouchers.map((voucher) => (
-              <Card key={voucher.id} className={`${voucher.used ? 'opacity-60' : ''}`}>
+              <Card key={voucher.id} className={`${voucher.usedAt ? 'opacity-60' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start space-x-4">
                     {/* Voucher Icon */}
                     <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg flex items-center justify-center">
-                      {getVoucherIcon(voucher.type)}
+                      {getVoucherIcon(voucher.issuer_type)}
                     </div>
 
                     {/* Voucher Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <h3 className="font-semibold text-gray-900 mb-1">{voucher.title}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{voucher.description}</p>
-                          {voucher.storeName && (
-                            <p className="text-sm text-primary-600 mb-2">{voucher.storeName}</p>
+                          <h3 className="font-semibold text-gray-900 mb-1">{voucher.description}</h3>
+                          {voucher.issuer_name && (
+                            <p className="text-sm text-primary-600 mb-2">{voucher.issuer_name}</p>
                           )}
                         </div>
-                        <Badge className={getVoucherTypeBadgeColor(voucher.type)}>
-                          {getVoucherTypeLabel(voucher.type)}
+                        <Badge className={getVoucherTypeBadgeColor(voucher.issuer_type)}>
+                          {getVoucherTypeLabel(voucher.issuer_type)}
                         </Badge>
                       </div>
+
+                      {/* Voucher type */}
+                      {voucher.type === 'order' && (
+                        <div className="text-sm text-orange-600 mb-3 flex items-center gap-2">
+                          <Package className="w-4 h-4 mr-1" />
+                          Voucher đơn hàng
+                        </div>
+                      )}
+
+                      {voucher.type === 'freeship' && (
+                        <div className="text-sm text-green-600 mb-3 flex items-center gap-2">
+                          <Truck className="w-4 h-4 mr-1" />
+                          Free ship
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                         <div className="flex items-center">
                           <Tag className="w-4 h-4 mr-1" />
-                          Giảm: {voucher.discount}
+                          Giảm: {voucher.discount_unit === 'amount' ? formatPrice(voucher.discount_value) : Math.round(voucher.discount_value) + '%'}
                         </div>
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
-                          HSD: {new Date(voucher.expiryDate).toLocaleDateString('vi-VN')}
+                          {voucher.end_date && (
+                            <span>Hạn sử dụng: {new Date(voucher.end_date).toLocaleDateString('vi-VN')}</span>
+                          )}
+                          {voucher.usedAt && (
+                            <span> • Ngày sử dụng: {new Date(voucher.usedAt).toLocaleDateString('vi-VN')}</span>
+                          )}
                         </div>
-                        {voucher.available > 0 && (
-                          <div className="flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            Còn: {voucher.available}
-                          </div>
-                        )}
                       </div>
 
                       <div className="text-sm text-gray-600 mb-3">
-                        Đơn tối thiểu: {voucher.minOrder.toLocaleString('vi-VN')}đ
-                        {voucher.maxDiscount && (
-                          <span> • Giảm tối đa: {voucher.maxDiscount.toLocaleString('vi-VN')}đ</span>
+                        Đơn tối thiểu: {formatPrice(voucher.min_order_value)}
+                        {voucher.max_discount_value && (
+                          <span> • Giảm tối đa: {formatPrice(voucher.max_discount_value)}</span>
                         )}
+                      
                       </div>
+
+                      {voucher.discount_amount && (
+                        <div className="text-sm text-gray-600 mb-3">
+                          Đã giảm thành công {formatPrice(voucher.discount_amount)} trong đơn hàng có ID: {voucher.id}
+                        </div>
+                      )}
 
                       {/* Voucher Code */}
                       <div className="flex items-center justify-between">
@@ -281,13 +393,7 @@ const Voucher = () => {
                           </Button>
                         </div>
 
-                        {!voucher.used && (
-                          <Button size="sm" className="bg-primary-600 hover:bg-primary-700">
-                            Sử dụng ngay
-                          </Button>
-                        )}
-
-                        {voucher.used && (
+                        {voucher.usedAt && (
                           <Badge variant="secondary">Đã sử dụng</Badge>
                         )}
                       </div>

@@ -1,54 +1,20 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trash2, ShoppingCart, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
-
-// Mock wishlist data
-const mockWishlistItems = [
-  {
-    id: '1',
-    name: 'Panadol Extra Forte 500mg - Giảm đau hạ sốt nhanh chóng',
-    price: 125000,
-    originalPrice: 150000,
-    image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=300',
-    store: 'Nhà thuốc ABC',
-    discount: 17,
-    inStock: true,
-    freeShipping: true
-  },
-  {
-    id: '2',
-    name: 'Blackmores Bio C 1000mg - Vitamin C tăng cường miễn dịch',
-    price: 320000,
-    originalPrice: 380000,
-    image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300',
-    store: 'Pharma Store',
-    discount: 16,
-    inStock: true,
-    freeShipping: true
-  },
-  {
-    id: '3',
-    name: 'Máy đo huyết áp Omron HEM-7120 - Chính xác và tiện dụng',
-    price: 1250000,
-    originalPrice: 1500000,
-    image: 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=300',
-    store: 'Medical Equipment',
-    discount: 17,
-    inStock: false,
-    freeShipping: true
-  }
-];
+import { useNavigate } from 'react-router-dom';
+import customerApi from '@/services/api-customer-service';
+import { toast } from '@/hooks/use-toast';
 
 const Wishlist = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [wishlistItems, setWishlistItems] = useState(mockWishlistItems);
-  const [cartCount, setCartCount] = useState(0);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const navigate = useNavigate();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -56,34 +22,119 @@ const Wishlist = () => {
     }).format(price);
   };
 
-  const handleRemoveFromWishlist = (itemId: string) => {
-    setWishlistItems(prev => prev.filter(item => item.id !== itemId));
+  const handleClickProduct = (item: any) => {
+    navigate(`/products/${item.product_id}`);
   };
 
-  const handleAddToCart = (itemId: string) => {
-    const item = wishlistItems.find(item => item.id === itemId);
-    if (item?.inStock) {
-      setCartCount(prev => prev + 1);
-      console.log('Added to cart:', itemId);
+  const handleRemoveFromWishlist = (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+
+    const params = {
+      user_id: item.user_id,
+      product_id: item.product_id
     }
+
+    customerApi.delete(`/wishlists/remove`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const wishlistItemDeleted = response.data.data;
+          setWishlistItems(wishlistItems.filter(item => item.id !== wishlistItemDeleted.id));
+
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
   };
 
-  const handleAddAllToCart = () => {
-    const inStockItems = wishlistItems.filter(item => item.inStock);
-    setCartCount(prev => prev + inStockItems.length);
-    console.log('Added all in-stock items to cart');
+  const handleAddToCart = (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+    
+    const payload = {
+      user_id: user.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_url_image: item.product_url_image,
+      price: item.price,
+      seller_id: item.seller_id,
+      seller_name: item.seller_name,
+      quantity: 1
+    }
+
+    customerApi.post(`/carts/add`, payload)
+      .then((response) => {
+        if (response.data.code === 0) {
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
   };
+
+  const fetchWishlistItems = () => {
+    setIsLoading(true);
+    const params = {
+      user_id: user.id
+    }
+
+    customerApi.get(`/wishlists`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const wishlistItems = response.data.data;
+          setWishlistItems(wishlistItems);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchWishlistItems();
+  }, []);
+
+  if (isLoading) {
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+            <div className="">
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        onMenuClick={() => setSidebarOpen(true)}
-        cartCount={cartCount}
-        wishlistCount={wishlistItems.length}
-      />
+      <Header />
 
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <main className="flex-1 min-h-screen">
           {/* Breadcrumb */}
@@ -106,12 +157,12 @@ const Wishlist = () => {
                   Danh sách yêu thích ({wishlistItems.length})
                 </h1>
               </div>
-              {wishlistItems.length > 0 && (
+              {/* {wishlistItems.length > 0 && (
                 <Button onClick={handleAddAllToCart} className="bg-primary-600 hover:bg-primary-700">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Thêm tất cả vào giỏ
                 </Button>
-              )}
+              )} */}
             </div>
 
             {wishlistItems.length === 0 ? (
@@ -125,7 +176,7 @@ const Wishlist = () => {
                   <p className="text-gray-500 mb-6">
                     Hãy thêm những sản phẩm bạn quan tâm vào danh sách yêu thích
                   </p>
-                  <Button className="bg-primary-600 hover:bg-primary-700">
+                  <Button className="bg-primary-600 hover:bg-primary-700" onClick={() => navigate('/products')}>
                     Khám phá sản phẩm
                   </Button>
                 </CardContent>
@@ -134,55 +185,34 @@ const Wishlist = () => {
               /* Wishlist items */
               <div className="space-y-4">
                 {wishlistItems.map((item) => (
-                  <Card key={item.id} className="overflow-hidden">
+                  <Card key={item.id} className="overflow-hidden cursor-pointer" onClick={() => handleClickProduct(item)}>
                     <CardContent className="p-4">
                       <div className="flex flex-col md:flex-row gap-4">
                         {/* Product image */}
                         <div className="flex-shrink-0">
                           <div className="relative w-full md:w-32 h-32">
                             <img
-                              src={item.image || "/placeholder.svg"}
-                              alt={item.name}
+                              src={item.product_url_image || "/default-product.png"}
+                              alt={item.product_name}
                               className="w-full h-full object-cover rounded-lg"
                             />
-                            {item.discount && (
-                              <Badge className="absolute top-1 left-1 bg-medical-red text-white text-xs">
-                                -{item.discount}%
-                              </Badge>
-                            )}
                           </div>
                         </div>
 
                         {/* Product info */}
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
-                            {item.name}
+                            {item.product_name}
                           </h3>
-                          <p className="text-sm text-gray-500 mb-2">{item.store}</p>
-                          
-                          {item.freeShipping && (
-                            <Badge variant="secondary" className="bg-medical-green/10 text-medical-green mb-2">
-                              Freeship
-                            </Badge>
-                          )}
+                          <p className="text-sm text-gray-500 mb-2">{item.seller_name}</p>
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-xl font-bold text-medical-red">
                                 {formatPrice(item.price)}
                               </span>
-                              {item.originalPrice && (
-                                <span className="text-sm text-gray-500 line-through">
-                                  {formatPrice(item.originalPrice)}
-                                </span>
-                              )}
                             </div>
 
-                            <div className={`text-sm font-medium ${
-                              item.inStock ? 'text-medical-green' : 'text-medical-red'
-                            }`}>
-                              {item.inStock ? 'Còn hàng' : 'Hết hàng'}
-                            </div>
                           </div>
                         </div>
 
@@ -191,8 +221,7 @@ const Wishlist = () => {
                           <Button
                             size="sm"
                             className="w-full bg-primary-600 hover:bg-primary-700"
-                            disabled={!item.inStock}
-                            onClick={() => handleAddToCart(item.id)}
+                            onClick={(e) => handleAddToCart(e, item)}
                           >
                             <ShoppingCart className="w-4 h-4 mr-1" />
                             Thêm vào giỏ
@@ -201,7 +230,7 @@ const Wishlist = () => {
                             variant="outline"
                             size="sm"
                             className="w-full text-medical-red border-medical-red hover:bg-medical-red hover:text-white"
-                            onClick={() => handleRemoveFromWishlist(item.id)}
+                            onClick={(e) => handleRemoveFromWishlist(e, item)}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
                             Xóa

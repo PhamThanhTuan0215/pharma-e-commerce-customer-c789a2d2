@@ -126,7 +126,7 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} cartCount={0} wishlistCount={5} />
+      <Header onMenuClick={() => {}} />
       
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Thanh toán</h1>
