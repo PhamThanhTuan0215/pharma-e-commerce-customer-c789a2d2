@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
-import api from '@/services/api';
+import productApi from '@/services/api-product-service';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
   const [brands, setBrands] = useState([]);
 
   const fetchProductTypes = async () => {
-    api.get('/product/product-types/full-list-product-type')
+    productApi.get('/product-types/full-list-product-type')
       .then((response) => {
         if (response.data.code === 0) {
           const productTypes = response.data.data;
@@ -37,7 +37,7 @@ const Sidebar = ({ isOpen, onClose, onSelectCategory, onSelectBrand, onSelectPro
   };
 
   const fetchBrands = async () => {
-    api.get('/product/products/brands')
+    productApi.get('/products/brands')
       .then((response) => {
         if (response.data.code === 0) {
           const brands = response.data.data;

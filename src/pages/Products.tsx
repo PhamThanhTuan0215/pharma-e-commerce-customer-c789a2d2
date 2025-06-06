@@ -150,7 +150,7 @@ const Products = () => {
 
   const fetchProducts = async () => {
 
-    api.get('/product/products/list-product', {
+    api('product').get('/products/list-product', {
       params: {
         page: currentPage,
         limit: itemsPerPage,

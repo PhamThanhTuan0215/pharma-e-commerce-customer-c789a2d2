@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '@/services/api';
+import userApi from '@/services/api-user-service';
 import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
@@ -34,7 +34,7 @@ const Login = () => {
     // login
     if (isLogin) {
       try {
-        const response = await api.post('/user/users/login', formData);
+        const response = await userApi.post('/users/login', formData);
         if(response.data.code === 0) {
           localStorage.setItem('user', JSON.stringify(response.data.data.user));
           localStorage.setItem('accessToken', response.data.data.accessToken);
@@ -75,7 +75,7 @@ const Login = () => {
       }
 
       try {
-        const response = await api.post('/user/users/register', formData);
+        const response = await userApi.post('/users/register', formData);
         if(response.data.code === 0) {
           toast({
             variant: "success",

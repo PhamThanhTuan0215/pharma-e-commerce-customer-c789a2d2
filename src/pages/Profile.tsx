@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import api from '@/services/api';
+import userApi from '@/services/api-user-service';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -517,7 +517,7 @@ const Profile = () => {
     if (!isLoggedIn) return;
 
     if (user.id) {
-      api.get(`/user/users/${user.id}`)
+      userApi.get(`/users/${user.id}`)
         .then((response) => {
           if (response.data.code === 0) {
             const userInfo = response.data.data;
@@ -545,7 +545,7 @@ const Profile = () => {
     if (!isLoggedIn) return;
 
     if (userInfo.id) {
-      api.put(`/user/users`, userInfo)
+      userApi.put(`/users`, userInfo)
         .then((response) => {
           if (response.data.code === 0) {
             const user = response.data.data;
@@ -577,7 +577,7 @@ const Profile = () => {
     const formData = new FormData();
     formData.append('image', avatarImage);
 
-    api.post(`/user/users/${user.id}/update-avatar`, formData, {
+    userApi.post(`/users/${user.id}/update-avatar`, formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }

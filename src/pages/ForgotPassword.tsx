@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '@/services/api';
+import userApi from '@/services/api-user-service';
 import { toast } from '@/hooks/use-toast';
 
 const ForgotPassword = () => {
@@ -34,7 +34,7 @@ const ForgotPassword = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/user/users/forgot-password', { email });
+      const response = await userApi.post('/users/forgot-password', { email });
       if (response.data.code === 0) {
         toast({
           variant: "success",
