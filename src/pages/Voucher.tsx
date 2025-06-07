@@ -66,6 +66,7 @@ const Voucher = () => {
   const [activeTab, setActiveTab] = useState<'available' | 'used'>('available');
   const [filterType, setFilterType] = useState<'all' | 'platform' | 'shop'>('all');
 
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   
   const [isAvailableVouchersLoading, setIsAvailableVouchersLoading] = useState(false);
@@ -128,6 +129,8 @@ const Voucher = () => {
   };
 
   const fetchAvailableVouchers = () => {
+    if (!isLoggedIn) return;
+
     const params = {
       user_id: user.id,
     }
@@ -156,7 +159,7 @@ const Voucher = () => {
   }
 
   const fetchUsageVouchers = () => {
-
+    if (!isLoggedIn) return;
     const params = {
       user_id: user.id,
     }

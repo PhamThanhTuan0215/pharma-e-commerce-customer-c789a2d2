@@ -89,6 +89,7 @@ interface Store {
 const Cart = () => {
   const [cartData, setCartData] = useState([]);
 
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -140,7 +141,7 @@ const Cart = () => {
 
   const decreaseQuantity = (item: CartItem) => {
 
-    if(item.quantity <= 1) {
+    if (item.quantity <= 1) {
       return;
     }
 
@@ -202,28 +203,28 @@ const Cart = () => {
   const removeItem = (item: CartItem) => {
 
     customerApi.delete(`/carts/remove/${item.id}`)
-    .then((response) => {
-      if (response.data.code === 0) {
+      .then((response) => {
+        if (response.data.code === 0) {
 
-        const cartItem = response.data.data;
+          const cartItem = response.data.data;
 
-        setCartData(prev =>
-          prev.map(store =>
-            store.seller_id === cartItem.seller_id
-              ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.filter(item => item.id !== cartItem.id) }
-              : store
-          ).filter(store => store.products.length > 0)
-        );
+          setCartData(prev =>
+            prev.map(store =>
+              store.seller_id === cartItem.seller_id
+                ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.filter(item => item.id !== cartItem.id) }
+                : store
+            ).filter(store => store.products.length > 0)
+          );
 
-        console.log(response.data.message);
-      }
-    })
-    .catch((error) => {
-      toast({
-        variant: 'error',
-        description: error.response.data.message || error.message,
+          console.log(response.data.message);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
       });
-    });
   };
 
   const getStoreTotal = (store: any) => {
@@ -251,6 +252,9 @@ const Cart = () => {
   };
 
   const fetchCartData = async () => {
+
+    if (!isLoggedIn) return;
+
     setIsLoading(true);
     const params = {
       user_id: user.id

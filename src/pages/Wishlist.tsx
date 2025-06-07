@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 const Wishlist = () => {
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
 
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -86,6 +87,8 @@ const Wishlist = () => {
   };
 
   const fetchWishlistItems = () => {
+    if (!isLoggedIn) return;
+
     setIsLoading(true);
     const params = {
       user_id: user.id

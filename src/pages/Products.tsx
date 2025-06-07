@@ -65,7 +65,9 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [totalPages, setTotalPages] = useState(0);
 
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
   const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -229,6 +231,8 @@ const Products = () => {
   };
 
   const fetchProductIdsInWishlist = async () => {
+
+    if (!isLoggedIn) return;
 
     const params = {
       user_id: user.id
