@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,126 +7,281 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import Header from '@/components/Header';
+import shipmentApi from '@/services/api-shipment-service';
+import paymentApi from '@/services/api-payment-service';
+import customerApi from '@/services/api-customer-service';
+import apiGHN from '@/services/api-GHN';
+import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
-interface CheckoutItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  store: string;
-  selected: boolean;
+interface AddressType {
+  id?: string;
+  address_name: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  province_id: number;
+  province_name: string;
+  district_id: number;
+  district_name: string;
+  ward_code: string;
+  ward_name: string;
+  address_detail: string;
+  is_default: boolean;
 }
 
-interface VoucherOption {
+interface Voucher {
   id: string;
   code: string;
-  discount: number;
-  type: 'percentage' | 'fixed';
-  minOrder: number;
+  type: 'order' | 'freeship';
+  issuer_type: 'platform' | 'shop';
+  issuer_id: string;
+  issuer_name: string;
+  description: string;
+  discount_unit: 'amount' | 'percent';
+  discount_value: number;
+  min_order_value?: number;
+  max_discount_value?: number;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+interface ProductInCart {
+  id: string;
+  user_id: string;
+  product_id: string;
+  product_name: string;
+  product_url_image: string;
+  price: string;
+  quantity: number;
+  seller_id: string;
+  seller_name: string;
+}
+
+interface StoreOrder {
+  seller_id: string;
+  seller_name: string;
+  total_quantity: number;
+  original_items_total: number;
+  original_shipping_fee: number;
+  discount_amount_items: number;
+  discount_amount_shipping: number;
+  items_total_after_discount: number;
+  shipping_fee_after_discount: number;
+  discount_amount_items_platform_allocated: number;
+  discount_amount_shipping_platform_allocated: number;
+  final_total: number;
+  order_voucher: {
+    is_applied: boolean;
+    code: string | null;
+    voucher_id: string | null;
+    discount_amount: number;
+  },
+  freeship_voucher: {
+    is_applied: boolean;
+    code: string | null;
+    voucher_id: string | null;
+    discount_amount: number;
+  },
+  platform_order_voucher: {
+    is_applied: boolean;
+    code: string | null;
+    voucher_id: string | null;
+    discount_amount: number;
+  },
+  platform_freeship_voucher: {
+    is_applied: boolean;
+    code: string | null;
+    voucher_id: string | null;
+    discount_amount: number;
+  },
+  products: ProductInCart[];
+}
+
+interface PaymentMethodType {
+  id: string;
+  method_name: string;
+  description: string;
+}
+
+// hàm lấy phí ship tạm thời thay thế cho api
+const randomShippingFee = (addresses: AddressType[], storeOrder: StoreOrder) => {
+
+  if (addresses.length === 0) {
+    return 0;
+  }
+
+  return Math.floor(Math.random() * 10000) + 10000;
 }
 
 const Checkout = () => {
+
+  const navigate = useNavigate();
+
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!isLoggedIn) {
+    return <div>Vui lòng đăng nhập để mua hàng</div>;
+  }
+
   const [selectedAddress, setSelectedAddress] = useState('1');
   const [selectedPayment, setSelectedPayment] = useState('cod');
-  const [note, setNote] = useState('');
 
-  // Sample checkout items grouped by store
-  const checkoutItems: Record<string, CheckoutItem[]> = {
-    'Nhà thuốc ABC': [
-      {
-        id: '1',
-        name: 'Paracetamol 500mg - Hộp 100 viên',
-        price: 25000,
-        quantity: 2,
-        image: '/placeholder.svg',
-        store: 'Nhà thuốc ABC',
-        selected: true
-      },
-      {
-        id: '2',
-        name: 'Vitamin C 1000mg',
-        price: 150000,
-        quantity: 1,
-        image: '/placeholder.svg',
-        store: 'Nhà thuốc ABC',
-        selected: true
-      }
-    ],
-    'Pharma Store': [
-      {
-        id: '3',
-        name: 'Máy đo huyết áp Omron',
-        price: 1200000,
-        quantity: 1,
-        image: '/placeholder.svg',
-        store: 'Pharma Store',
-        selected: true
-      }
-    ]
+  const [addresses, setAddresses] = useState<AddressType[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodType[]>([]);
+  const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
+
+  const [cartSummary, setCartSummary] = useState<any>({
+    platform_discount_amount_items: 10000,
+    platform_discount_amount_shipping: 10000,
+    platform_order_voucher: {
+      is_applied: false,
+      code: '',
+      voucher_id: null,
+      discount_amount: 0
+    },
+    platform_freeship_voucher: {
+      is_applied: false,
+      code: '',
+      voucher_id: null,
+      discount_amount: 0
+    }
+  });
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
   };
 
-  const addresses = [
-    {
-      id: '1',
-      name: 'Nhà riêng',
-      address: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-      phone: '0123456789',
-      isDefault: true
-    },
-    {
-      id: '2',
-      name: 'Văn phòng',
-      address: '456 Đường DEF, Phường GHI, Quận 3, TP.HCM',
-      phone: '0987654321',
-      isDefault: false
-    }
-  ];
-
-  const paymentMethods = [
-    {
-      id: 'cod',
-      name: 'Thanh toán khi nhận hàng (COD)',
-      description: 'Thanh toán bằng tiền mặt khi nhận hàng',
-      icon: '💵'
-    },
-    {
-      id: 'banking',
-      name: 'Chuyển khoản ngân hàng',
-      description: 'Chuyển khoản qua ATM/Internet Banking',
-      icon: '🏦'
-    },
-    {
-      id: 'momo',
-      name: 'Ví MoMo',
-      description: 'Thanh toán qua ví điện tử MoMo',
-      icon: '📱'
-    },
-    {
-      id: 'zalopay',
-      name: 'ZaloPay',
-      description: 'Thanh toán qua ví điện tử ZaloPay',
-      icon: '💳'
-    }
-  ];
-
-  const calculateStoreTotal = (items: CheckoutItem[]) => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const calculateGrandTotal = () => {
-    return Object.values(checkoutItems).reduce((total, items) => {
-      return total + calculateStoreTotal(items);
+  const calculateStoresOriginalItemsTotal = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.original_items_total;
     }, 0);
   };
 
-  const shippingFee = 30000; // Fixed shipping fee for demo
-  const finalTotal = calculateGrandTotal() + shippingFee;
+  const calculateStoresOriginalShippingFee = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.original_shipping_fee;
+    }, 0);
+  };
+
+  const calculateStoresDiscountAmountItems = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.discount_amount_items;
+    }, 0);
+  };
+
+  const calculateStoresDiscountAmountShipping = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.discount_amount_shipping;
+    }, 0);
+  };
+
+  const calculateGrandItemsTotal = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.items_total_after_discount;
+    }, 0);
+  };
+
+  const calculateGrandShippingFee = () => {
+    return storeOrders.reduce((total, storeOrder) => {
+      return total + storeOrder.shipping_fee_after_discount;
+    }, 0);
+  };
+
+  const calculateFinalTotalBeforePlatformVoucher = () => {
+    return calculateGrandItemsTotal() + calculateGrandShippingFee();
+  }
+
+  const calculateFinalTotalAfterPlatformVoucher = () => {
+    return calculateFinalTotalBeforePlatformVoucher() - cartSummary.platform_discount_amount_items - cartSummary.platform_discount_amount_shipping;
+  }
+
+  const fetchAddresses = async () => {
+    try {
+      const response = await shipmentApi.get(`/shipments/addresses?user_id=${user.id}`);
+      if (response.data.code === 0) {
+        const addresses = response.data.data;
+        setAddresses(addresses);
+        const defaultAddress = addresses.find(address => address.is_default);
+        if (defaultAddress) {
+          setSelectedAddress(defaultAddress.id);
+        }
+        return addresses; // Return the addresses for chaining
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    return []; // Return empty array if there's an error
+  }
+
+  const fetchPaymentMethods = () => {
+    paymentApi.get(`/payments/methods`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          setPaymentMethods(response.data.data);
+          setSelectedPayment(response.data.data[0].id);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
+  }
+
+  const fetchStoreOrders = async (currentAddresses: AddressType[]) => {
+    try {
+      const response = await customerApi.get(`/carts/checkout?user_id=${user.id}`)
+      if (response.data.code === 0) {
+        const storeOrders = response.data.data;
+  
+        // Sử dụng currentAddresses thay vì addresses từ state
+        storeOrders.forEach((storeOrder) => {
+          storeOrder.original_shipping_fee = randomShippingFee(currentAddresses, storeOrder);
+          storeOrder.shipping_fee_after_discount = storeOrder.original_shipping_fee;
+          storeOrder.final_total = storeOrder.items_total_after_discount + storeOrder.shipping_fee_after_discount;
+        });
+  
+        setStoreOrders(storeOrders);
+        return storeOrders;
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    return [];
+  }
+
+  const fetchVouchers = (storeOrders: StoreOrder[]) => {
+    console.log('fetchVouchers với các ID nhà bán: ', storeOrders.map(storeOrder => storeOrder.seller_id));
+  }
+
+  useEffect(() => {
+    const initializeCheckout = async () => {
+      const fetchedAddresses = await fetchAddresses();
+      const fetchedStoreOrders = await fetchStoreOrders(fetchedAddresses);
+      fetchVouchers(fetchedStoreOrders);
+    };
+
+    initializeCheckout();
+    fetchPaymentMethods();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => {}} />
-      
+      <Header onMenuClick={() => { }} />
+
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Thanh toán</h1>
 
@@ -141,98 +295,130 @@ const Checkout = () => {
                   <MapPin className="w-5 h-5 mr-2 text-medical-blue" />
                   Địa chỉ giao hàng
                 </CardTitle>
-                <Button variant="outline" size="sm">
+                <Button onClick={() => {
+                  navigate('/profile', { state: { tab: 'addresses' } });
+                }} variant="outline" size="sm">
                   Thay đổi
                 </Button>
               </CardHeader>
               <CardContent>
                 <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
-                  {addresses.map((address) => (
+                  {addresses.length > 0 ? addresses.map((address) => (
                     <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-lg">
                       <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
                       <Label htmlFor={address.id} className="flex-1 cursor-pointer">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium">{address.name}</span>
-                          {address.isDefault && (
-                            <Badge variant="secondary" className="text-xs">Mặc định</Badge>
+                          <span className="font-medium">{address.address_name}</span>
+                          {address.is_default && (
+                            <Badge className='bg-primary-600 text-white'>Mặc định</Badge>
                           )}
                         </div>
-                        <p className="text-gray-600 text-sm mb-1">{address.address}</p>
+                        <p className="text-gray-600 text-sm mb-1">{address.address_detail}, {address.ward_name}, {address.district_name}, {address.province_name}</p>
+                        <p className="text-gray-600 text-sm mb-1">Tên người nhận: {address.full_name}</p>
                         <p className="text-gray-600 text-sm">SĐT: {address.phone}</p>
                       </Label>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="flex items-center justify-center h-24">
+                      <p className="text-gray-600 text-sm">Bạn chưa có địa chỉ giao hàng. Vui lòng thêm địa chỉ mới</p>
+                    </div>
+                  )}
                 </RadioGroup>
               </CardContent>
             </Card>
 
             {/* Products by Store */}
-            {Object.entries(checkoutItems).map(([storeName, items]) => (
-              <Card key={storeName}>
+            {storeOrders.map((storeOrder) => (
+              <Card key={storeOrder.seller_id}>
                 <CardHeader>
                   <CardTitle className="flex items-center text-lg">
                     <div className="w-6 h-6 bg-medical-green rounded mr-2"></div>
-                    {storeName}
+                    {storeOrder.seller_name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 py-3 border-b last:border-b-0">
+                  {storeOrder.products.map((product) => (
+                    <div key={product.id} className="flex items-center space-x-4 py-3 border-b last:border-b-0">
                       <img
-                        src={item.image}
-                        alt={item.name}
+                        src={product.product_url_image}
+                        alt={product.product_name}
                         className="w-16 h-16 object-cover rounded"
                       />
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 mb-1">{item.name}</h3>
-                        <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
+                        <h3 className="font-medium text-gray-900 mb-1">{product.product_name}</h3>
+                        <p className="text-sm text-gray-600">Số lượng: {product.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-medical-red">
-                          {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                        <p className="font-semibold text-medical-blue">
+                          {formatPrice(Number(product.price) * product.quantity)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {item.price.toLocaleString('vi-VN')}đ/sản phẩm
+                          {formatPrice(Number(product.price))}/sản phẩm
                         </p>
                       </div>
                     </div>
                   ))}
 
-                  {/* Store voucher selection */}
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Tag className="w-4 h-4 mr-2 text-medical-blue" />
-                        <span className="text-sm font-medium">Voucher cửa hàng</span>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Chọn voucher
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Shipping option */}
+                  {/* Phí vận chuyển gốc */}
                   <div className="bg-orange-50 rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <Truck className="w-4 h-4 mr-2 text-medical-orange" />
                         <div>
-                          <span className="text-sm font-medium">Giao hàng tiêu chuẩn</span>
+                          <span className="text-sm font-medium">Phí vận chuyển gốc</span>
                           <div className="flex items-center text-xs text-gray-600 mt-1">
                             <Clock className="w-3 h-3 mr-1" />
                             Nhận hàng vào 3-5 ngày
                           </div>
                         </div>
                       </div>
-                      <span className="text-sm font-medium">30.000đ</span>
+                      <span className="text-sm font-medium text-medical-blue">{formatPrice(storeOrder.shipping_fee_after_discount)}</span>
+                    </div>
+                  </div>
+
+                  {/* Store order voucher */}
+                  <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Tag className="w-4 h-4 mr-2 text-medical-blue" />
+                        <span className="text-sm font-medium">Voucher đơn hàng</span>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        Chọn voucher
+                      </Button>
+                    </div>
+
+                    {/* tiền giảm được từ voucher đơn hàng */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Tiền giảm được</span>
+                      <span className="text-sm font-medium text-medical-green"> - {formatPrice(storeOrder.discount_amount_items)}</span>
+                    </div>
+                  </div>
+
+                  {/* Store freeship voucher */}
+                  <div className="bg-green-50 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Truck className="w-4 h-4 mr-2 text-medical-green" />
+                        <span className="text-sm font-medium">Voucher vận chuyển</span>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        Chọn voucher
+                      </Button>
+                    </div>
+
+                    {/* tiền giảm được từ voucher vận chuyển */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Tiền giảm được</span>
+                      <span className="text-sm font-medium text-medical-green">- {formatPrice(storeOrder.discount_amount_shipping)}</span>
                     </div>
                   </div>
 
                   {/* Store total */}
                   <div className="flex justify-between items-center pt-3 font-medium">
-                    <span>Tổng tiền ({storeName}):</span>
+                    <span>Tổng tiền ({storeOrder.seller_name}):</span>
                     <span className="text-medical-red">
-                      {calculateStoreTotal(items).toLocaleString('vi-VN')}đ
+                      {formatPrice(storeOrder.final_total)}
                     </span>
                   </div>
                 </CardContent>
@@ -254,11 +440,8 @@ const Checkout = () => {
                       <RadioGroupItem value={method.id} id={method.id} />
                       <Label htmlFor={method.id} className="flex-1 cursor-pointer">
                         <div className="flex items-center space-x-3">
-                          <span className="text-2xl">{method.icon}</span>
-                          <div>
-                            <p className="font-medium">{method.name}</p>
-                            <p className="text-sm text-gray-600">{method.description}</p>
-                          </div>
+                          <p className="font-medium">{method.method_name}</p>
+                          <p className="text-sm text-gray-600">{method.description}</p>
                         </div>
                       </Label>
                     </div>
@@ -267,19 +450,6 @@ const Checkout = () => {
               </CardContent>
             </Card>
 
-            {/* Order Note */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ghi chú đơn hàng</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Input
-                  placeholder="Ghi chú cho người bán (tùy chọn)"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </CardContent>
-            </Card>
           </div>
 
           {/* Order Summary */}
@@ -292,36 +462,57 @@ const Checkout = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Tổng tiền hàng:</span>
-                    <span>{calculateGrandTotal().toLocaleString('vi-VN')}đ</span>
+                    <span>{formatPrice(calculateGrandItemsTotal())}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Phí vận chuyển:</span>
-                    <span>{shippingFee.toLocaleString('vi-VN')}đ</span>
-                  </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">Tổng thanh toán:</span>
-                      <span className="font-bold text-lg text-medical-red">
-                        {finalTotal.toLocaleString('vi-VN')}đ
-                      </span>
-                    </div>
+                    <span>{formatPrice(calculateGrandShippingFee())}</span>
                   </div>
                 </div>
 
                 {/* Platform voucher */}
-                <div className="bg-red-50 rounded-lg p-3">
+                <div className="bg-blue-50 rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <Tag className="w-4 h-4 mr-2 text-medical-red" />
-                      <span className="text-sm font-medium">Voucher PharmaMart</span>
+                      <Tag className="w-4 h-4 mr-2 text-medical-blue" />
+                      <span className="text-sm font-medium">Voucher đơn hàng của sàn</span>
                     </div>
                     <Button variant="outline" size="sm">
                       Chọn
                     </Button>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Tiền giảm được</span>
+                    <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_items)}</span>
+                  </div>
                 </div>
 
-                <Button 
+                <div className="bg-green-50 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Truck className="w-4 h-4 mr-2 text-medical-green" />
+                      <span className="text-sm font-medium">Voucher vận chuyển của sàn</span>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      Chọn
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Tiền giảm được</span>
+                    <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_shipping)}</span>
+                  </div>
+                </div>
+
+                <div className="border-t pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Tổng thanh toán:</span>
+                    <span className="font-bold text-lg text-medical-red">
+                      {formatPrice(calculateFinalTotalAfterPlatformVoucher())}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
                   className="w-full bg-medical-red hover:bg-red-600 text-white py-3 text-lg font-semibold"
                   size="lg"
                 >

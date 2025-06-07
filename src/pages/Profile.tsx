@@ -8,10 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import userApi from '@/services/api-user-service';
 import shipmentApi from '@/services/api-shipment-service';
+import { Checkbox } from "@/components/ui/checkbox";
+import apiGHN from '@/services/api-GHN';
 import {
   Dialog,
   DialogContent,
@@ -27,8 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import apiGHN from '@/services/api-GHN';
 
 interface AddressType {
   id?: string;
@@ -176,6 +176,8 @@ interface OrderItemType {
 
 const Profile = () => {
 
+  const { tab } = useLocation().state || { tab: 'profile' };
+
   const menuItems = [
     { id: 'profile', label: 'Thông tin cá nhân', icon: User },
     { id: 'orders', label: 'Đơn hàng', icon: Package, onClick: () => {
@@ -197,7 +199,7 @@ const Profile = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(tab);
   const [isEditing, setIsEditing] = useState(false);
 
   const [avatarImage, setAvatarImage] = useState(null);
@@ -544,7 +546,7 @@ const Profile = () => {
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="font-medium">{address.address_name}</h3>
                         {address.is_default && (
-                          <Badge variant="secondary">Mặc định</Badge>
+                          <Badge className='bg-primary-600 text-white'>Mặc định</Badge>
                         )}
                       </div>
                       <p className="text-gray-600 mb-1">{address.address_detail}, {address.ward_name}, {address.district_name}, {address.province_name}</p>
@@ -1346,6 +1348,7 @@ const Profile = () => {
 
   useEffect(() => {
     fetchUserInfo();
+    fetchAddresses();
   }, []);
 
   return (
