@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock } from 'lucide-react';
+import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,13 @@ import Header from '@/components/Header';
 import shipmentApi from '@/services/api-shipment-service';
 import paymentApi from '@/services/api-payment-service';
 import customerApi from '@/services/api-customer-service';
+import discountApi from '@/services/api-discount-service';
+import orderApi from '@/services/api-order-service';
 import apiGHN from '@/services/api-GHN';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar } from 'lucide-react';
 
 interface AddressType {
   id?: string;
@@ -58,6 +62,13 @@ interface ProductInCart {
   seller_name: string;
 }
 
+interface SumaryVoucherUsage {
+  is_applied: boolean;
+  code: string | null;
+  voucher_id: string | null;
+  discount_amount: number;
+}
+
 interface StoreOrder {
   seller_id: string;
   seller_name: string;
@@ -71,37 +82,65 @@ interface StoreOrder {
   discount_amount_items_platform_allocated: number;
   discount_amount_shipping_platform_allocated: number;
   final_total: number;
-  order_voucher: {
-    is_applied: boolean;
-    code: string | null;
-    voucher_id: string | null;
-    discount_amount: number;
-  },
-  freeship_voucher: {
-    is_applied: boolean;
-    code: string | null;
-    voucher_id: string | null;
-    discount_amount: number;
-  },
-  platform_order_voucher: {
-    is_applied: boolean;
-    code: string | null;
-    voucher_id: string | null;
-    discount_amount: number;
-  },
-  platform_freeship_voucher: {
-    is_applied: boolean;
-    code: string | null;
-    voucher_id: string | null;
-    discount_amount: number;
-  },
+  order_voucher: SumaryVoucherUsage,
+  freeship_voucher: SumaryVoucherUsage,
+  platform_order_voucher: SumaryVoucherUsage,
+  platform_freeship_voucher: SumaryVoucherUsage,
   products: ProductInCart[];
+  order_id?: string; // chỉ có khi đã đặt hàng
 }
 
 interface PaymentMethodType {
   id: string;
   method_name: string;
   description: string;
+}
+
+interface ApplyVoucheStorerResponse {
+  voucher: Voucher;
+  original_items_total: number;
+  original_shipping_fee: number;
+  discount_amount_items: number;
+  discount_amount_shipping: number;
+  items_total_after_discount: number;
+  shipping_fee_after_discount: number;
+}
+
+interface ApplyVouchePlatformResponse {
+  voucher: Voucher;
+  items_total_before_platform_discount: number;
+  shipping_fee_before_platform_discount: number;
+  discount_amount_items_platform: number;
+  discount_amount_shipping_platform: number;
+  items_total_after_platform_discount: number;
+  shipping_fee_after_platform_discount: number;
+  platform_voucher_allocates_to_stores: [
+    {
+      store_id: string;
+      voucher_id: string;
+      type: 'order' | 'freeship';
+      allocated_discount_amount: number
+    }
+  ]
+}
+
+interface PlaceOrderBody {
+  user_id: string;
+  payment_method: string;
+  payment_status: string;
+  stores: StoreOrder[];
+}
+
+interface SaveVouchersUsageBody {
+  user_id: string;
+  stores: {
+    seller_id: string;
+    order_id: string;
+    order_voucher: SumaryVoucherUsage;
+    freeship_voucher: SumaryVoucherUsage;
+    platform_order_voucher: SumaryVoucherUsage;
+    platform_freeship_voucher: SumaryVoucherUsage;
+  }[]
 }
 
 // hàm lấy phí ship tạm thời thay thế cho api
@@ -111,7 +150,9 @@ const randomShippingFee = (addresses: AddressType[], storeOrder: StoreOrder) => 
     return 0;
   }
 
-  return Math.floor(Math.random() * 10000) + 10000;
+  // trả về ngãu nhiên 10K, 15K, 20K, 25K, 30K
+  const randomShippingFee = Math.floor(Math.random() * 4) * 5000 + 10000;
+  return randomShippingFee;
 }
 
 const Checkout = () => {
@@ -122,19 +163,33 @@ const Checkout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (!isLoggedIn) {
-    return <div>Vui lòng đăng nhập để mua hàng</div>;
+    return <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col items-center justify-center h-screen">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Vui lòng đăng nhập để mua hàng</h1>
+          <Button onClick={() => {
+            navigate('/login');
+          }}>Đăng nhập</Button>
+        </div>
+      </div>
+    </div>;
   }
 
-  const [selectedAddress, setSelectedAddress] = useState('1');
-  const [selectedPayment, setSelectedPayment] = useState('cod');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
 
   const [addresses, setAddresses] = useState<AddressType[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodType[]>([]);
   const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
 
+  const [showPlaceOrderDialog, setShowPlaceOrderDialog] = useState(false);
+
   const [cartSummary, setCartSummary] = useState<any>({
-    platform_discount_amount_items: 10000,
-    platform_discount_amount_shipping: 10000,
+    platform_discount_amount_items: 0,
+    platform_discount_amount_shipping: 0,
     platform_order_voucher: {
       is_applied: false,
       code: '',
@@ -149,6 +204,10 @@ const Checkout = () => {
     }
   });
 
+  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
+
+  const [showVoucherDialog, setShowVoucherDialog] = useState(false);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -156,29 +215,29 @@ const Checkout = () => {
     }).format(price);
   };
 
-  const calculateStoresOriginalItemsTotal = () => {
-    return storeOrders.reduce((total, storeOrder) => {
-      return total + storeOrder.original_items_total;
-    }, 0);
-  };
+  // const calculateStoresOriginalItemsTotal = () => {
+  //   return storeOrders.reduce((total, storeOrder) => {
+  //     return total + storeOrder.original_items_total;
+  //   }, 0);
+  // };
 
-  const calculateStoresOriginalShippingFee = () => {
-    return storeOrders.reduce((total, storeOrder) => {
-      return total + storeOrder.original_shipping_fee;
-    }, 0);
-  };
+  // const calculateStoresOriginalShippingFee = () => {
+  //   return storeOrders.reduce((total, storeOrder) => {
+  //     return total + storeOrder.original_shipping_fee;
+  //   }, 0);
+  // };
 
-  const calculateStoresDiscountAmountItems = () => {
-    return storeOrders.reduce((total, storeOrder) => {
-      return total + storeOrder.discount_amount_items;
-    }, 0);
-  };
+  // const calculateStoresDiscountAmountItems = () => {
+  //   return storeOrders.reduce((total, storeOrder) => {
+  //     return total + storeOrder.discount_amount_items;
+  //   }, 0);
+  // };
 
-  const calculateStoresDiscountAmountShipping = () => {
-    return storeOrders.reduce((total, storeOrder) => {
-      return total + storeOrder.discount_amount_shipping;
-    }, 0);
-  };
+  // const calculateStoresDiscountAmountShipping = () => {
+  //   return storeOrders.reduce((total, storeOrder) => {
+  //     return total + storeOrder.discount_amount_shipping;
+  //   }, 0);
+  // };
 
   const calculateGrandItemsTotal = () => {
     return storeOrders.reduce((total, storeOrder) => {
@@ -242,14 +301,14 @@ const Checkout = () => {
       const response = await customerApi.get(`/carts/checkout?user_id=${user.id}`)
       if (response.data.code === 0) {
         const storeOrders = response.data.data;
-  
+
         // Sử dụng currentAddresses thay vì addresses từ state
         storeOrders.forEach((storeOrder) => {
           storeOrder.original_shipping_fee = randomShippingFee(currentAddresses, storeOrder);
           storeOrder.shipping_fee_after_discount = storeOrder.original_shipping_fee;
           storeOrder.final_total = storeOrder.items_total_after_discount + storeOrder.shipping_fee_after_discount;
         });
-  
+
         setStoreOrders(storeOrders);
         return storeOrders;
       }
@@ -263,15 +322,449 @@ const Checkout = () => {
     return [];
   }
 
-  const fetchVouchers = (storeOrders: StoreOrder[]) => {
-    console.log('fetchVouchers với các ID nhà bán: ', storeOrders.map(storeOrder => storeOrder.seller_id));
+  const fetchPlatformVouchers = async (type: 'order' | 'freeship') => {
+    setIsLoading(true);
+    try {
+      const params = {
+        type: type,
+        user_id: user.id
+      }
+
+      const response = await discountApi.get(`/voucher-usages/platform`, { params });
+      if (response.data.code === 0) {
+        const platformVouchers = response.data.data;
+        if (type === 'order') {
+          setAvailableVouchers(platformVouchers.order);
+        } else if (type === 'freeship') {
+          setAvailableVouchers(platformVouchers.freeship);
+        }
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    finally {
+      setIsLoading(false);
+    }
+  }
+
+  const fetchStoreVouchers = async (sellerId: string, type: 'order' | 'freeship') => {
+    setIsLoading(true);
+
+    try {
+      const params = {
+        type: type,
+        user_id: user.id
+      }
+
+      const response = await discountApi.get(`/voucher-usages/shop/${sellerId}`, { params });
+      if (response.data.code === 0) {
+        const storeVouchers = response.data.data;
+        if (type === 'order') {
+          setAvailableVouchers(storeVouchers.order);
+        } else if (type === 'freeship') {
+          setAvailableVouchers(storeVouchers.freeship);
+        }
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleSelectVoucher = async (voucher: Voucher) => {
+
+    if (voucher.issuer_type === 'platform') {
+      if (voucher.type === 'freeship') {
+        // kiểm tra xem có shop nào đã áp dụng voucher loại freeship, nếu có rồi thì không cho áp dụng bời vì không thể cùng lúc dùng freeship của shop và sàn
+        const hasShopAppliedFreeshipVoucher = storeOrders.some(storeOrder => storeOrder.freeship_voucher.is_applied);
+        if (hasShopAppliedFreeshipVoucher) {
+          toast({
+            variant: 'error',
+            description: 'Không thể áp dụng voucher freeship của sàn vì đã có shop áp dụng voucher freeship',
+          });
+          return;
+        }
+      }
+
+      const params = {
+        apply_type: voucher.type,
+      }
+
+      const body = {
+        user_id: user.id,
+        voucher_code: voucher.code,
+        stores: storeOrders.map(storeOrder => {
+          return {
+            seller_id: storeOrder.seller_id,
+            items_total_after_discount: storeOrder.items_total_after_discount,
+            shipping_fee_after_discount: storeOrder.shipping_fee_after_discount,
+          }
+        })
+      }
+
+      discountApi.post(`/voucher-usages/apply`, body, { params })
+        .then((response) => {
+          if (response.data.code === 0) {
+
+            const applyData: ApplyVouchePlatformResponse = response.data.data;
+
+            // cập nhật lại cartSummary
+            setCartSummary(prevCartSummary => {
+              if (applyData.voucher.type === 'order') {
+                return {
+                  ...prevCartSummary,
+                  platform_discount_amount_items: applyData.discount_amount_items_platform,
+                  platform_order_voucher: {
+                    is_applied: true,
+                    code: voucher.code,
+                    voucher_id: voucher.id,
+                    discount_amount: applyData.discount_amount_items_platform,
+                  },
+                };
+              } else if (applyData.voucher.type === 'freeship') {
+                return {
+                  ...prevCartSummary,
+                  platform_discount_amount_shipping: applyData.discount_amount_shipping_platform,
+                  platform_freeship_voucher: {
+                    is_applied: true,
+                    code: voucher.code,
+                    voucher_id: voucher.id,
+                    discount_amount: applyData.discount_amount_shipping_platform,
+                  },
+                };
+              }
+            });
+
+            // cập nhật lại phân bổ giá trị giảm giá của voucher vào các storeOrder
+            setStoreOrders(prevStoreOrders => {
+              return prevStoreOrders.map(storeOrder => {
+                const allocatedVoucher = applyData.platform_voucher_allocates_to_stores.find(voucher => voucher.store_id === storeOrder.seller_id);
+                if (allocatedVoucher.type === 'order') {
+                  return {
+                    ...storeOrder,
+                    discount_amount_items_platform_allocated: allocatedVoucher.allocated_discount_amount,
+                    platform_order_voucher: {
+                      is_applied: true,
+                      code: voucher.code,
+                      voucher_id: voucher.id,
+                      discount_amount: allocatedVoucher.allocated_discount_amount,
+                    },
+                  };
+                } else if (allocatedVoucher.type === 'freeship') {
+                  return {
+                    ...storeOrder,
+                    discount_amount_shipping_platform_allocated: allocatedVoucher.allocated_discount_amount,
+                    platform_freeship_voucher: {
+                      is_applied: true,
+                      code: voucher.code,
+                      voucher_id: voucher.id,
+                      discount_amount: allocatedVoucher.allocated_discount_amount,
+                    },
+                  };
+                }
+              });
+            });
+
+            setShowVoucherDialog(false);
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: `${error.response.data.message} ${error.response.data.note && `(${error.response.data.note})`}` || error.message,
+          });
+        });
+
+    }
+    else if (voucher.issuer_type === 'shop') {
+
+      const storeOrder = storeOrders.find(storeOrder => storeOrder.seller_id === voucher.issuer_id);
+
+      const params = {
+        apply_type: voucher.type,
+      }
+
+      const body = {
+        user_id: user.id,
+        seller_id: voucher.issuer_id,
+        voucher_code: voucher.code,
+        original_items_total: storeOrder.original_items_total,
+        original_shipping_fee: storeOrder.original_shipping_fee,
+      }
+
+      discountApi.post(`/voucher-usages/apply/${voucher.issuer_id}`, body, { params })
+        .then((response) => {
+          if (response.data.code === 0) {
+
+            // xóa tất cả voucher hiện tại của sàn
+            setStoreOrders(prevStoreOrders => {
+              return prevStoreOrders.map(storeOrder => {
+                return {
+                  ...storeOrder,
+                  discount_amount_items_platform_allocated: 0,
+                  discount_amount_shipping_platform_allocated: 0,
+                  platform_order_voucher: {
+                    is_applied: false,
+                    code: null,
+                    voucher_id: null,
+                    discount_amount: 0,
+                  },
+                  platform_freeship_voucher: {
+                    is_applied: false,
+                    code: null,
+                    voucher_id: null,
+                    discount_amount: 0,
+                  },
+                };
+              });
+            });
+        
+            setCartSummary(prevCartSummary => {
+              return {
+                ...prevCartSummary,
+                platform_discount_amount_items: 0,
+                platform_discount_amount_shipping: 0,
+                platform_order_voucher: {
+                  is_applied: false,
+                  code: null,
+                  voucher_id: null,
+                  discount_amount: 0,
+                },
+                platform_freeship_voucher: {
+                  is_applied: false,
+                  code: null,
+                  voucher_id: null,
+                  discount_amount: 0,
+                },
+              };
+            });
+
+            const applyData: ApplyVoucheStorerResponse = response.data.data;
+
+            // câp nhật lại storeOrder đã áp dụng voucher này, còn các nhà bán khác giữ nguyên
+            setStoreOrders(prevStoreOrders => {
+              return prevStoreOrders.map(storeOrder => {
+                if (storeOrder.seller_id === voucher.issuer_id) {
+                  return {
+                    ...storeOrder,
+                    discount_amount_items: applyData.discount_amount_items,
+                    discount_amount_shipping: applyData.discount_amount_shipping,
+                    items_total_after_discount: applyData.items_total_after_discount,
+                    shipping_fee_after_discount: applyData.shipping_fee_after_discount,
+                    final_total: applyData.items_total_after_discount + applyData.shipping_fee_after_discount,
+                    // tùy thuộc voucher loại gì thì cập nhật voucher đó
+                    order_voucher: {
+                      is_applied: voucher.type === 'order' ? true : storeOrder.order_voucher.is_applied,
+                      code: voucher.type === 'order' ? voucher.code : storeOrder.order_voucher.code,
+                      voucher_id: voucher.type === 'order' ? voucher.id : storeOrder.order_voucher.voucher_id,
+                      discount_amount: voucher.type === 'order' ? applyData.discount_amount_items : storeOrder.order_voucher.discount_amount,
+                    },
+                    freeship_voucher: {
+                      is_applied: voucher.type === 'freeship' ? true : storeOrder.freeship_voucher.is_applied,
+                      code: voucher.type === 'freeship' ? voucher.code : storeOrder.freeship_voucher.code,
+                      voucher_id: voucher.type === 'freeship' ? voucher.id : storeOrder.freeship_voucher.voucher_id,
+                      discount_amount: voucher.type === 'freeship' ? applyData.discount_amount_shipping : storeOrder.freeship_voucher.discount_amount,
+                    },
+                  };
+                }
+                return storeOrder;
+              });
+            });
+
+            setShowVoucherDialog(false);
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        });
+    }
+  }
+
+  const handleCloseVoucherDialog = () => {
+    setShowVoucherDialog(false);
+  }
+
+  const handleRemoveAllVouchers = () => {
+    setStoreOrders(prevStoreOrders => {
+      return prevStoreOrders.map(storeOrder => {
+        return {
+          ...storeOrder,
+          discount_amount_items: 0,
+          discount_amount_shipping: 0,
+          discount_amount_items_platform_allocated: 0,
+          discount_amount_shipping_platform_allocated: 0,
+          items_total_after_discount: storeOrder.original_items_total,
+          shipping_fee_after_discount: storeOrder.original_shipping_fee,
+          final_total: storeOrder.original_items_total + storeOrder.original_shipping_fee,
+          order_voucher: {
+            is_applied: false,
+            code: null,
+            voucher_id: null,
+            discount_amount: 0,
+          },
+          freeship_voucher: {
+            is_applied: false,
+            code: null,
+            voucher_id: null,
+            discount_amount: 0,
+          },
+          platform_order_voucher: {
+            is_applied: false,
+            code: null,
+            voucher_id: null,
+            discount_amount: 0,
+          },
+          platform_freeship_voucher: {
+            is_applied: false,
+            code: null,
+            voucher_id: null,
+            discount_amount: 0,
+          },
+        };
+      });
+    });
+
+    setCartSummary(prevCartSummary => {
+      return {
+        ...prevCartSummary,
+        platform_discount_amount_items: 0,
+        platform_discount_amount_shipping: 0,
+        platform_order_voucher: {
+          is_applied: false,
+          code: null,
+          voucher_id: null,
+          discount_amount: 0,
+        },
+        platform_freeship_voucher: {
+          is_applied: false,
+          code: null,
+          voucher_id: null,
+          discount_amount: 0,
+        },
+      };
+    });
+  }
+
+  const confirmPlaceOrder = () => {
+    setShowPlaceOrderDialog(true);
+  }
+
+  const placeOrder = async () => {
+    // yêu cầu đã chọn địa chỉ giao hàng
+    if (!selectedAddress) {
+      toast({
+        variant: 'error',
+        description: 'Vui lòng chọn địa chỉ giao hàng',
+      });
+      return;
+    }
+
+    // yêu cầu đã chọn phương thức thanh toán
+    if (!selectedPayment) {
+      toast({
+        variant: 'error',
+        description: 'Vui lòng chọn phương thức thanh toán',
+      });
+      return;
+    }
+
+    if (storeOrders.length === 0) {
+      toast({
+        variant: 'error',
+        description: 'Không có sản phẩm nào để đặt hàng',
+      });
+      return;
+    }
+
+    // lưu lại đơn hàng
+    const bodyPlaceOrder: PlaceOrderBody = {
+      user_id: user.id,
+      payment_method: paymentMethods.find(payment => payment.id === selectedPayment)?.method_name || 'COD',
+      payment_status: 'pending',
+      stores: storeOrders,
+    }
+
+    setIsLoading(true);
+
+    try {
+      const placeOrderResponse = await orderApi.post('/orders', bodyPlaceOrder);
+      if (placeOrderResponse.data.code === 0) {
+        
+        const newOrders = placeOrderResponse.data.data;
+        const newStoreOrders = storeOrders.map(storeOrder => {
+          const newOrder = newOrders.find(order => order.seller_id === storeOrder.seller_id);
+          return {
+            ...storeOrder,
+            order_id: newOrder.id,
+          };
+        });
+
+        handleSaveVouchersUsage(newStoreOrders);
+
+        if(bodyPlaceOrder.payment_method === 'VNPay') {
+          // thực hiện gọi thanh toán VNPay
+        }
+
+        navigate('/profile', { state: { tab: 'orders' } });
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleSaveVouchersUsage = async (newStoreOrders: StoreOrder[]) => {
+    const bodySaveVouchersUsage: SaveVouchersUsageBody = {
+      user_id: user.id,
+      stores: newStoreOrders.map(storeOrder => {
+        return {
+          seller_id: storeOrder.seller_id,
+          order_id: storeOrder.order_id,
+          order_voucher: storeOrder.order_voucher,
+          freeship_voucher: storeOrder.freeship_voucher,
+          platform_order_voucher: storeOrder.platform_order_voucher,
+          platform_freeship_voucher: storeOrder.platform_freeship_voucher,
+        }
+      }),
+    }
+
+    try {
+      const saveVouchersUsageResponse = await discountApi.post('/voucher-usages/save', bodySaveVouchersUsage);
+      if (saveVouchersUsageResponse.data.code === 0) {
+        console.log(saveVouchersUsageResponse.data.message);
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
   }
 
   useEffect(() => {
     const initializeCheckout = async () => {
       const fetchedAddresses = await fetchAddresses();
-      const fetchedStoreOrders = await fetchStoreOrders(fetchedAddresses);
-      fetchVouchers(fetchedStoreOrders);
+      fetchStoreOrders(fetchedAddresses);
     };
 
     initializeCheckout();
@@ -372,7 +865,7 @@ const Checkout = () => {
                           </div>
                         </div>
                       </div>
-                      <span className="text-sm font-medium text-medical-blue">{formatPrice(storeOrder.shipping_fee_after_discount)}</span>
+                      <span className="text-sm font-medium text-medical-blue">{formatPrice(storeOrder.original_shipping_fee)}</span>
                     </div>
                   </div>
 
@@ -383,16 +876,26 @@ const Checkout = () => {
                         <Tag className="w-4 h-4 mr-2 text-medical-blue" />
                         <span className="text-sm font-medium">Voucher đơn hàng</span>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button onClick={() => {
+                        setShowVoucherDialog(true);
+                        fetchStoreVouchers(storeOrder.seller_id, 'order');
+                      }} variant="outline" size="sm">
                         Chọn voucher
                       </Button>
                     </div>
 
                     {/* tiền giảm được từ voucher đơn hàng */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Tiền giảm được</span>
-                      <span className="text-sm font-medium text-medical-green"> - {formatPrice(storeOrder.discount_amount_items)}</span>
-                    </div>
+                    {storeOrder.order_voucher.is_applied && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium">Mã voucher: {storeOrder.order_voucher.code}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium">Tiền giảm được: &nbsp;</span>
+                          <span className="text-sm font-medium text-medical-green"> - {formatPrice(storeOrder.discount_amount_items)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Store freeship voucher */}
@@ -402,16 +905,26 @@ const Checkout = () => {
                         <Truck className="w-4 h-4 mr-2 text-medical-green" />
                         <span className="text-sm font-medium">Voucher vận chuyển</span>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button onClick={() => {
+                        setShowVoucherDialog(true);
+                        fetchStoreVouchers(storeOrder.seller_id, 'freeship');
+                      }} variant="outline" size="sm">
                         Chọn voucher
                       </Button>
                     </div>
 
                     {/* tiền giảm được từ voucher vận chuyển */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Tiền giảm được</span>
-                      <span className="text-sm font-medium text-medical-green">- {formatPrice(storeOrder.discount_amount_shipping)}</span>
-                    </div>
+                    {storeOrder.freeship_voucher.is_applied && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium">Mã voucher: {storeOrder.freeship_voucher.code}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium">Tiền giảm được: &nbsp;</span>
+                          <span className="text-sm font-medium text-medical-green">- {formatPrice(storeOrder.discount_amount_shipping)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Store total */}
@@ -477,14 +990,19 @@ const Checkout = () => {
                       <Tag className="w-4 h-4 mr-2 text-medical-blue" />
                       <span className="text-sm font-medium">Voucher đơn hàng của sàn</span>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button onClick={() => {
+                      setShowVoucherDialog(true);
+                      fetchPlatformVouchers('order');
+                    }} variant="outline" size="sm">
                       Chọn
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Tiền giảm được</span>
-                    <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_items)}</span>
-                  </div>
+                  {cartSummary.platform_order_voucher.is_applied && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Tiền giảm được: &nbsp;</span>
+                      <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_items)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-green-50 rounded-lg p-3 space-y-2">
@@ -493,15 +1011,25 @@ const Checkout = () => {
                       <Truck className="w-4 h-4 mr-2 text-medical-green" />
                       <span className="text-sm font-medium">Voucher vận chuyển của sàn</span>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button onClick={() => {
+                      setShowVoucherDialog(true);
+                      fetchPlatformVouchers('freeship');
+                    }} variant="outline" size="sm">
                       Chọn
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Tiền giảm được</span>
-                    <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_shipping)}</span>
-                  </div>
+                  {cartSummary.platform_freeship_voucher.is_applied && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Tiền giảm được: &nbsp;</span>
+                      <span className="text-sm font-medium text-medical-green">- {formatPrice(cartSummary.platform_discount_amount_shipping)}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* nút xóa toàn bộ voucher */}
+                <Button onClick={handleRemoveAllVouchers} variant="outline" size="sm" className="w-full">
+                  Gỡ bỏ toàn bộ voucher đang áp dụng
+                </Button>
 
                 <div className="border-t pt-2">
                   <div className="flex justify-between items-center">
@@ -515,6 +1043,8 @@ const Checkout = () => {
                 <Button
                   className="w-full bg-medical-red hover:bg-red-600 text-white py-3 text-lg font-semibold"
                   size="lg"
+                  onClick={confirmPlaceOrder}
+                  disabled={isLoading}
                 >
                   Đặt hàng
                 </Button>
@@ -526,11 +1056,112 @@ const Checkout = () => {
                   </a>{' '}
                   của PharmaMart
                 </p>
+
+                <Dialog open={showPlaceOrderDialog} onOpenChange={setShowPlaceOrderDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Đặt hàng</DialogTitle>
+                    </DialogHeader>
+                    <DialogDescription>
+                      Bạn có chắc chắn muốn đặt hàng không?
+                    </DialogDescription>
+                    <DialogFooter className="flex space-x-2 justify-end">
+                      <Button variant="outline" onClick={() => setShowPlaceOrderDialog(false)}>
+                        Đóng
+                      </Button>
+                      <Button variant="destructive" onClick={placeOrder}>
+                        Xác nhận đặt hàng
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Voucher Dialog */}
+      <Dialog open={showVoucherDialog} onOpenChange={handleCloseVoucherDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chọn voucher</DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="space-y-2 max-h-[80vh] overflow-y-auto">
+            {isLoading ? (
+              <p>Đang tải voucher...</p>
+            ) : availableVouchers.length > 0 ? (
+              availableVouchers.map((voucher) => (
+                <div key={voucher.id} className="flex items-center justify-between border-b last:border-b-0 py-4 border-gray-300 p-4">
+                  <div className="p-4">
+                    <div className="flex items-start space-x-4">
+
+                      {/* Voucher Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold text-gray-900 mb-1">{voucher.description}</h3>
+                            {voucher.issuer_name && (
+                              <p className="text-sm text-primary-600 mb-2">{voucher.issuer_name}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Voucher type */}
+                        {voucher.type === 'order' && (
+                          <div className="text-sm text-orange-600 mb-3 flex items-center gap-2">
+                            <Package className="w-4 h-4 mr-1" />
+                            Voucher đơn hàng
+                          </div>
+                        )}
+
+                        {voucher.type === 'freeship' && (
+                          <div className="text-sm text-green-600 mb-3 flex items-center gap-2">
+                            <Truck className="w-4 h-4 mr-1" />
+                            Free ship
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center">
+                            <Tag className="w-4 h-4 mr-1" />
+                            Giảm: {voucher.discount_unit === 'amount' ? formatPrice(voucher.discount_value) : Math.round(voucher.discount_value) + '%'}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            {voucher.end_date && (
+                              <span>Hạn sử dụng: {new Date(voucher.end_date).toLocaleDateString('vi-VN')}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-gray-600 mb-3">
+                          Đơn tối thiểu: {formatPrice(voucher.min_order_value)}
+                          {voucher.max_discount_value && (
+                            <span> • Giảm tối đa: {formatPrice(voucher.max_discount_value)}</span>
+                          )}
+
+                        </div>
+
+                        {/* Voucher Code */}
+                        <p>Mã voucher: <span className="font-mono text-sm px-2 py-1 text-blue-600">{voucher.code}</span></p>
+
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={() => {
+                    handleSelectVoucher(voucher);
+                  }} variant="outline" size="sm">
+                    Chọn
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p>Không có voucher nào</p>
+            )}
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

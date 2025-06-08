@@ -137,6 +137,14 @@ const Products = () => {
 
   const handleToggleWishlist = (product: Product) => {
 
+    if (!isLoggedIn) {
+      toast({
+        variant: 'error',
+        description: 'Vui lòng đăng nhập để sử dụng chức năng này',
+      });
+      return;
+    }
+
     if (productIdsInWishlist.includes(product.id)) {
 
       const params = {
@@ -196,6 +204,14 @@ const Products = () => {
   };
 
   const handleAddToCart = (product: Product) => {
+
+    if (!isLoggedIn) {
+      toast({
+        variant: 'error',
+        description: 'Vui lòng đăng nhập để sử dụng chức năng này',
+      });
+      return;
+    }
 
     const payload = {
       user_id: user.id,

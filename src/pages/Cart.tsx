@@ -358,10 +358,10 @@ const Cart = () => {
                       <CardContent className="p-4">
                         {/* Store header */}
                         <div className="flex items-center gap-3 mb-4">
-                          <Checkbox
+                          {/* <Checkbox
                             checked={store.products.every(item => item.selected)}
                             onCheckedChange={() => toggleStoreSelection(store.seller_id)}
-                          />
+                          /> */}
                           <Store className="w-5 h-5 text-primary-600" />
                           <span className="font-medium text-gray-900">{store.seller_name}</span>
                         </div>
@@ -371,10 +371,10 @@ const Cart = () => {
                           {store.products.map((item) => (
                             <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 bg-gray-50 rounded-lg justify-between">
                               <div className="flex items-center gap-4 w-full sm:w-auto">
-                                <Checkbox
+                                {/* <Checkbox
                                   checked={item.selected}
                                   onCheckedChange={() => toggleItemSelection(store.seller_id, item.id)}
-                                />
+                                /> */}
 
                                 <img
                                   src={item.product_url_image || "/default-product.png"}

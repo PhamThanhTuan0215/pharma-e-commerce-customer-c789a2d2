@@ -373,9 +373,9 @@ const Voucher = () => {
                       
                       </div>
 
-                      {voucher.discount_amount && (
+                      {(voucher.discount_amount && voucher.order_id) && (
                         <div className="text-sm text-gray-600 mb-3">
-                          Đã giảm thành công {formatPrice(voucher.discount_amount)} trong đơn hàng có ID: {voucher.id}
+                          Đã giảm thành công {formatPrice(voucher.discount_amount)} trong đơn hàng có ID: {voucher.order_id}
                         </div>
                       )}
 
