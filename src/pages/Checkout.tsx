@@ -302,12 +302,42 @@ const Checkout = () => {
       if (response.data.code === 0) {
         const storeOrders = response.data.data;
 
-        // Sử dụng currentAddresses thay vì addresses từ state
-        storeOrders.forEach((storeOrder) => {
-          storeOrder.original_shipping_fee = randomShippingFee(currentAddresses, storeOrder);
-          storeOrder.shipping_fee_after_discount = storeOrder.original_shipping_fee;
-          storeOrder.final_total = storeOrder.items_total_after_discount + storeOrder.shipping_fee_after_discount;
+        // gọi api để tính phí vận chuyển cho nhiều cửa hàng cùng lúc
+        const address = currentAddresses.find(address => address.is_default);
+
+        const store_ids = [];
+        storeOrders.forEach(storeOrder => {
+          store_ids.push(storeOrder.seller_id);
         });
+
+        const user_address = {
+          district_id: address.district_id,
+          ward_code: address.ward_code,
+        }
+
+        const body = {
+          user_address,
+          store_ids
+        }
+
+        try {
+          const shippingFeeResponse = await shipmentApi.post('/shipments/shipping-fee', body);
+          if (shippingFeeResponse.data.code === 0) {
+            const shippingFeesInfo = shippingFeeResponse.data.data;
+
+            storeOrders.forEach(storeOrder => {
+              storeOrder.original_shipping_fee = shippingFeesInfo[storeOrder.seller_id].original_shipping_fee || 0;
+              storeOrder.shipping_fee_after_discount = storeOrder.original_shipping_fee;
+              storeOrder.final_total = storeOrder.items_total_after_discount + storeOrder.shipping_fee_after_discount;
+            });
+          }
+        }
+        catch (error) {
+          toast({
+            variant: 'error',
+            description: error.response.data.message || error.message,
+          });
+        }
 
         setStoreOrders(storeOrders);
         return storeOrders;
@@ -320,6 +350,49 @@ const Checkout = () => {
       });
     }
     return [];
+  }
+
+  const fetchShippingFee = async () => {
+    const address = addresses.find(address => address.id === selectedAddress);
+    const store_ids = [];
+    storeOrders.forEach(storeOrder => {
+      store_ids.push(storeOrder.seller_id);
+    });
+
+    const body = {
+      user_address: {
+        district_id: address.district_id,
+        ward_code: address.ward_code,
+      },
+      store_ids
+    }
+
+    handleRemoveAllVouchers();
+
+    try {
+      const shippingFeeResponse = await shipmentApi.post('/shipments/shipping-fee', body);
+      if (shippingFeeResponse.data.code === 0) {
+        const shippingFeesInfo = shippingFeeResponse.data.data;
+
+        setStoreOrders(prevStoreOrders => {
+          return prevStoreOrders.map(storeOrder => {
+            const shippingFee = shippingFeesInfo[storeOrder.seller_id];
+            return {
+              ...storeOrder,
+              original_shipping_fee: shippingFee.original_shipping_fee || 0,
+              shipping_fee_after_discount: shippingFee.original_shipping_fee || 0,  
+              final_total: storeOrder.items_total_after_discount + shippingFee.original_shipping_fee || 0,
+            };
+          });
+        });
+      }
+    }
+    catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
   }
 
   const fetchPlatformVouchers = async (type: 'order' | 'freeship') => {
@@ -528,7 +601,7 @@ const Checkout = () => {
                 };
               });
             });
-        
+
             setCartSummary(prevCartSummary => {
               return {
                 ...prevCartSummary,
@@ -702,7 +775,7 @@ const Checkout = () => {
     try {
       const placeOrderResponse = await orderApi.post('/orders', bodyPlaceOrder);
       if (placeOrderResponse.data.code === 0) {
-        
+
         const newOrders = placeOrderResponse.data.data;
         const newStoreOrders = storeOrders.map(storeOrder => {
           const newOrder = newOrders.find(order => order.seller_id === storeOrder.seller_id);
@@ -714,7 +787,7 @@ const Checkout = () => {
 
         handleSaveVouchersUsage(newStoreOrders);
 
-        if(bodyPlaceOrder.payment_method === 'VNPay') {
+        if (bodyPlaceOrder.payment_method === 'VNPay') {
           // thực hiện gọi thanh toán VNPay
         }
 
@@ -761,6 +834,11 @@ const Checkout = () => {
     }
   }
 
+  const handleChangeAddress = (addressId: string) => {
+    setSelectedAddress(addressId);
+    fetchShippingFee();
+  }
+
   useEffect(() => {
     const initializeCheckout = async () => {
       const fetchedAddresses = await fetchAddresses();
@@ -795,7 +873,7 @@ const Checkout = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
+                <RadioGroup value={selectedAddress} onValueChange={handleChangeAddress}>
                   {addresses.length > 0 ? addresses.map((address) => (
                     <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-lg">
                       <RadioGroupItem value={address.id} id={address.id} className="mt-1" />

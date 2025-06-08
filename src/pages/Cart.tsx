@@ -474,9 +474,9 @@ const Cart = () => {
                       <Link to="/checkout">
                         <Button
                           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
-                          disabled={getSelectedItemsCount() === 0}
+                          disabled={getTotalQuantity() === 0}
                         >
-                          Mua hàng ({getSelectedItemsCount()})
+                          Mua hàng ({getTotalQuantity()})
                         </Button>
                       </Link>
 
