@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/Header';
 import discountApi from '@/services/api-discount-service';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 // mock vouchers data
 // const mockAvailableVouchers : Voucher[] = [
@@ -63,12 +64,14 @@ interface Voucher {
 }
 
 const Voucher = () => {
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState<'available' | 'used'>('available');
   const [filterType, setFilterType] = useState<'all' | 'platform' | 'shop'>('all');
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+
   const [isAvailableVouchersLoading, setIsAvailableVouchersLoading] = useState(false);
   const [isUsedVouchersLoading, setIsUsedVouchersLoading] = useState(false);
 
@@ -85,14 +88,14 @@ const Voucher = () => {
   };
 
   useEffect(() => {
-    if(activeTab === 'available') {
+    if (activeTab === 'available') {
       setFilteredVouchers(availableVouchers.filter(voucher => {
-        if(filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+        if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
         return true;
       }));
     } else {
       setFilteredVouchers(usedVouchers.filter(voucher => {
-        if(filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+        if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
         return true;
       }));
     }
@@ -138,24 +141,24 @@ const Voucher = () => {
     setIsAvailableVouchersLoading(true);
 
     discountApi.get('voucher-usages/all-avaiable-vouchers', { params })
-    .then((response) => {
-      if (response.data.code === 0) {
-        const availableVouchers = response.data.data;
-        setAvailableVouchers(availableVouchers);
-        setFilteredVouchers(availableVouchers);
+      .then((response) => {
+        if (response.data.code === 0) {
+          const availableVouchers = response.data.data;
+          setAvailableVouchers(availableVouchers);
+          setFilteredVouchers(availableVouchers);
 
-        console.log(response.data.message);
-      }
-    })
-    .catch((error) => {
-      toast({
-        variant: 'error',
-        description: error.response.data.message || error.message,
+          console.log(response.data.message);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsAvailableVouchersLoading(false);
       });
-    })
-    .finally(() => {
-      setIsAvailableVouchersLoading(false);
-    });
   }
 
   const fetchUsageVouchers = () => {
@@ -167,45 +170,45 @@ const Voucher = () => {
     setIsUsedVouchersLoading(true);
 
     discountApi.get('voucher-usages/get-by-user', { params })
-    .then((response) => {
-      if (response.data.code === 0) {
-        const usedVouchers = response.data.data;
+      .then((response) => {
+        if (response.data.code === 0) {
+          const usedVouchers = response.data.data;
 
-        // format lại định dạng voucher để lưu vào setUsedVouchers
+          // format lại định dạng voucher để lưu vào setUsedVouchers
 
-        const formattedUsedVouchers = usedVouchers.map((usageVoucher) => {
-          return {
-            id: usageVoucher.voucher.id,
-            description: usageVoucher.voucher.description,
-            code: usageVoucher.voucher.code,
-            type: usageVoucher.voucher.type,
-            discount_unit: usageVoucher.voucher.discount_unit,
-            discount_value: usageVoucher.voucher.discount_value,
-            min_order_value: usageVoucher.voucher.min_order_value,
-            max_discount_value: usageVoucher.voucher.max_discount_value,
-            issuer_type: usageVoucher.voucher.issuer_type,
-            issuer_id: usageVoucher.voucher.issuer_id,
-            issuer_name: usageVoucher.voucher.issuer_name,
-            order_id: usageVoucher.order_id,
-            discount_amount: usageVoucher.discount_amount,
-            usedAt: usageVoucher.createdAt,
-          }
+          const formattedUsedVouchers = usedVouchers.map((usageVoucher) => {
+            return {
+              id: usageVoucher.voucher.id,
+              description: usageVoucher.voucher.description,
+              code: usageVoucher.voucher.code,
+              type: usageVoucher.voucher.type,
+              discount_unit: usageVoucher.voucher.discount_unit,
+              discount_value: usageVoucher.voucher.discount_value,
+              min_order_value: usageVoucher.voucher.min_order_value,
+              max_discount_value: usageVoucher.voucher.max_discount_value,
+              issuer_type: usageVoucher.voucher.issuer_type,
+              issuer_id: usageVoucher.voucher.issuer_id,
+              issuer_name: usageVoucher.voucher.issuer_name,
+              order_id: usageVoucher.order_id,
+              discount_amount: usageVoucher.discount_amount,
+              usedAt: usageVoucher.createdAt,
+            }
+          });
+
+          setUsedVouchers(formattedUsedVouchers);
+
+          console.log(response.data.message);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
         });
-
-        setUsedVouchers(formattedUsedVouchers);
-
-        console.log(response.data.message);
-      }
-    })
-    .catch((error) => {
-      toast({
-        variant: 'error',
-        description: error.response.data.message || error.message,
+      })
+      .finally(() => {
+        setIsUsedVouchersLoading(false);
       });
-    })
-    .finally(() => {
-      setIsUsedVouchersLoading(false);
-    });
   }
 
   useEffect(() => {
@@ -213,7 +216,7 @@ const Voucher = () => {
     fetchUsageVouchers();
   }, []);
 
-  if(isAvailableVouchersLoading || isUsedVouchersLoading) {
+  if (isAvailableVouchersLoading || isUsedVouchersLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -232,7 +235,18 @@ const Voucher = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
+      {/* Breadcrumb */}
+      <div className="bg-white border-b px-4 py-3">
+        <div className="container mx-auto">
+          <nav className="text-sm text-gray-500">
+            <span onClick={() => navigate('/')} className="cursor-pointer hover:text-gray-900">Trang chủ</span>
+            <span className="mx-2">/</span>
+            <span className="text-gray-900">Kho voucher</span>
+          </nav>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Kho Voucher</h1>
@@ -263,11 +277,10 @@ const Voucher = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.key
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === tab.key
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               {tab.label} ({tab.count})
             </button>
@@ -370,7 +383,7 @@ const Voucher = () => {
                         {voucher.max_discount_value && (
                           <span> • Giảm tối đa: {formatPrice(voucher.max_discount_value)}</span>
                         )}
-                      
+
                       </div>
 
                       {(voucher.discount_amount && voucher.order_id) && (

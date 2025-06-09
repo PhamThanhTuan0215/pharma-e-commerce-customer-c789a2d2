@@ -159,15 +159,23 @@ type OrderType = Order & {
 
 const Profile = () => {
 
-  const { tab } = useLocation().state || { tab: 'profile' };
+  const { tab, isPlaceOrder, _selectedOrder } = useLocation().state || { tab: 'profile', isPlaceOrder: false, selectedOrderId: null };
 
   useEffect(() => {
     if (tab === 'orders') {
       fetchOrders();
-      toast({
-        variant: 'success',
-        description: 'Đã đặt hàng thành công',
-      });
+      if (isPlaceOrder) {
+        toast({
+          variant: 'success',
+          description: 'Đã đặt hàng thành công',
+        });
+      }
+      if (_selectedOrder) {
+        handleViewOrderDetail(_selectedOrder);
+      }
+    }
+    else if (tab === 'addresses') {
+      fetchAddresses();
     }
   }, [tab]);
 
@@ -185,8 +193,8 @@ const Profile = () => {
     },
     { id: 'security', label: 'Bảo mật', icon: Lock },
     { id: 'notifications', label: 'Thông báo', icon: Bell },
-    { id: 'wishlist', label: 'Yêu thích', icon: Heart },
-    { id: 'payment', label: 'Thanh toán', icon: CreditCard },
+    // { id: 'wishlist', label: 'Yêu thích', icon: Heart },
+    // { id: 'payment', label: 'Thanh toán', icon: CreditCard },
   ];
 
   const navigate = useNavigate();
@@ -478,7 +486,7 @@ const Profile = () => {
               </div> : <div className="space-y-4">
                 <h4 className="font-medium">Sản phẩm</h4>
                 {orderItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                  <div onClick={() => handleClickProduct(item)} key={item.id} className="flex items-center space-x-4 border-b pb-4 cursor-pointer">
                     <img
                       src={item.product_url_image}
                       alt={item.product_name}
@@ -1469,6 +1477,10 @@ const Profile = () => {
       });
   }
 
+  const handleClickProduct = (item: any) => {
+    navigate(`/products/${item.product_id}`, { state: { tab: 'orders', _selectedOrder: selectedOrder } });
+  };
+
   const fetchOrders = () => {
     setIsLoading(true);
 
@@ -1540,7 +1552,6 @@ const Profile = () => {
 
   useEffect(() => {
     fetchUserInfo();
-    fetchAddresses();
   }, []);
 
   return (

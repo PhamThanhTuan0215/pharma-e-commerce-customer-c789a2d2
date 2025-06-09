@@ -144,7 +144,7 @@ const Wishlist = () => {
           <div className="bg-white border-b px-4 py-3">
             <div className="container mx-auto">
               <nav className="text-sm text-gray-500">
-                <span>Trang chủ</span>
+                <span onClick={() => navigate('/')} className="cursor-pointer hover:text-gray-900">Trang chủ</span>
                 <span className="mx-2">/</span>
                 <span className="text-gray-900">Danh sách yêu thích</span>
               </nav>

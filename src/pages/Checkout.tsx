@@ -791,7 +791,7 @@ const Checkout = () => {
           // thực hiện gọi thanh toán VNPay
         }
 
-        navigate('/profile', { state: { tab: 'orders' } });
+        navigate('/profile', { state: { tab: 'orders', isPlaceOrder: true } });
       }
     }
     catch (error) {

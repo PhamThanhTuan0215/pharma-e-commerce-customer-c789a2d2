@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import customerApi from '@/services/api-customer-service';
 import { toast } from '@/hooks/use-toast';
 
@@ -93,6 +93,8 @@ const Cart = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -251,6 +253,10 @@ const Cart = () => {
     );
   };
 
+  const handleClickProduct = (item: any) => {
+    navigate(`/products/${item.product_id}`);
+  };
+
   const fetchCartData = async () => {
 
     if (!isLoggedIn) return;
@@ -315,7 +321,7 @@ const Cart = () => {
           <div className="bg-white border-b px-4 py-3">
             <div className="container mx-auto">
               <nav className="text-sm text-gray-500">
-                <span>Trang chủ</span>
+                <span onClick={() => navigate('/')} className="cursor-pointer hover:text-gray-900">Trang chủ</span>
                 <span className="mx-2">/</span>
                 <span className="text-gray-900">Giỏ hàng</span>
               </nav>
@@ -370,7 +376,7 @@ const Cart = () => {
                         <div className="space-y-4">
                           {store.products.map((item) => (
                             <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 bg-gray-50 rounded-lg justify-between">
-                              <div className="flex items-center gap-4 w-full sm:w-auto">
+                              <div onClick={() => handleClickProduct(item)} className="flex items-center gap-4 w-full sm:w-auto cursor-pointer">
                                 {/* <Checkbox
                                   checked={item.selected}
                                   onCheckedChange={() => toggleItemSelection(store.seller_id, item.id)}
