@@ -134,7 +134,7 @@ interface Order {
   final_total: number;
   payment_method: string;
   order_status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
-  payment_status: 'pending' | 'paid';
+  payment_status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
   is_completed: boolean;
   createdAt: string;
 }
@@ -302,6 +302,28 @@ const Profile = () => {
       'shipping': 'Đang giao',
       'delivered': 'Đã giao',
       'cancelled': 'Đã hủy'
+    };
+    return statusMap[status] || status;
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'text-yellow-600',
+      'completed': 'text-green-600',
+      'failed': 'text-red-600',
+      'cancelled': 'text-red-600',
+      'refunded': 'text-green-600'
+    };
+    return statusMap[status] || status;
+  };
+
+  const getPaymentStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Chờ thanh toán',
+      'completed': 'Đã thanh toán',
+      'failed': 'Thanh toán thất bại',
+      'cancelled': 'Đã hủy',
+      'refunded': 'Đã hoàn tiền'
     };
     return statusMap[status] || status;
   };
@@ -475,7 +497,7 @@ const Profile = () => {
                   <div className="text-right">
                     <p className="text-sm text-gray-600">Phương thức thanh toán</p>
                     <p className="font-medium">{selectedOrder?.payment_method}</p>
-                    <p className={`${selectedOrder?.payment_status === 'paid' ? 'text-green-600' : 'text-red-600'}`}>{selectedOrder?.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}</p>
+                    <p className={`${getPaymentStatusColor(selectedOrder?.payment_status || '')}`}>{getPaymentStatusText(selectedOrder?.payment_status || '')}</p>
                   </div>
                 </div>
               </div>
