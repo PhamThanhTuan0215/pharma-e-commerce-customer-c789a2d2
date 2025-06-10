@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Filter, SlidersHorizontal, Grid, List } from 'lucide-react';
+import { Filter, SlidersHorizontal, Grid, List, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
@@ -67,11 +67,11 @@ const Products = () => {
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+
   const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
-
+  let timeoutId: NodeJS.Timeout;
   const [filters, setFilters] = useState({
     page: currentPage,
     limit: itemsPerPage,
@@ -124,15 +124,18 @@ const Products = () => {
   };
 
   const handleSearch = (query: string) => {
-    setFilters({
-      ...filters,
-      name: query,
-      brand: null,
-      product_type_name: null,
-      category_name: null,
-      sort_price: null,
-      page: 1
-    });
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      setFilters({
+        ...filters,
+        name: query,
+        brand: null,
+        product_type_name: null,
+        category_name: null,
+        sort_price: null,
+        page: 1
+      });
+    }, 400);
   };
 
   const handleToggleWishlist = (product: Product) => {
@@ -359,6 +362,16 @@ const Products = () => {
         />
 
         <main className="flex-1 p-4">
+          {/* Search bar (giới hạn chiều ngang khi ở chế độ mobile) */}
+          <div className="flex-1 max-w-md relative w-[300px]">
+            <Input
+              className="pr-10 rounded-full border-blue-300"
+              type="text"
+              placeholder="Tìm kiếm sản phẩm..."
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+            <Search className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2" />
+          </div>
           {/* Filters and sorting */}
           <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -460,86 +473,85 @@ const Products = () => {
 
           {/* Products grid */}
           {isLoading ? (
-            <div className="animate-pulse">
-              <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              </div>
+            <div className="col-span-full flex justify-center items-center h-32">
+              <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : (
-             <div className={`grid gap-4 ${viewMode === 'grid'
-            ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-            : 'grid-cols-1'
-            }`}>
-            {products.length > 0 ? products.map((product) => (
-              <div key={product.id} onClick={() => handleProductClick(product.id)} className="cursor-pointer">
-                <ProductCard
-                  product={product}
-                  onToggleWishlist={handleToggleWishlist}
-                  onAddToCart={handleAddToCart}
-                  isInWishlist={productIdsInWishlist.includes(product.id)}
-                />
-              </div>
-            )) : (
-              <div className="col-span-full flex justify-center items-center h-full">
-                <p className="text-gray-500">Không có sản phẩm nào phù hợp</p>
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 0 && (
-            <div className="mt-8 flex justify-center">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) setCurrentPage(currentPage - 1);
-                      }}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+            <div>
+              <div className={`grid gap-4 ${viewMode === 'grid'
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+                : 'grid-cols-1'
+                }`}>
+                {products.length > 0 ? products.map((product) => (
+                  <div key={product.id} onClick={() => handleProductClick(product.id)} className="cursor-pointer">
+                    <ProductCard
+                      product={product}
+                      onToggleWishlist={handleToggleWishlist}
+                      onAddToCart={handleAddToCart}
+                      isInWishlist={productIdsInWishlist.includes(product.id)}
                     />
-                  </PaginationItem>
+                  </div>
+                )) : (
+                  <div className="col-span-full flex justify-center items-center h-full">
+                    <p className="text-gray-500">Không có sản phẩm nào phù hợp</p>
+                  </div>
+                )}
+              </div>
 
-                  {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <PaginationItem key={pageNum}>
-                        <PaginationLink
+              {/* Pagination */}
+              {totalPages > 0 && (
+                <div className="mt-8 flex justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
                           href="#"
-                          isActive={currentPage === pageNum}
                           onClick={(e) => {
                             e.preventDefault();
-                            setCurrentPage(pageNum);
+                            if (currentPage > 1) setCurrentPage(currentPage - 1);
                           }}
-                        >
-                          {pageNum}
-                        </PaginationLink>
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
                       </PaginationItem>
-                    );
-                  })}
 
-                  {totalPages > 5 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
+                      {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationLink
+                              href="#"
+                              isActive={currentPage === pageNum}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setCurrentPage(pageNum);
+                              }}
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
 
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                      }}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+                      {totalPages > 5 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                          }}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </div>
           )}
         </main>

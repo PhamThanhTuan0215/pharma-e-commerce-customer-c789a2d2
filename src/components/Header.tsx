@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package } from 'lucide-react';
+import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   isShowMenu?: boolean;
@@ -13,6 +13,7 @@ interface HeaderProps {
 
 const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -30,7 +31,7 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
         {/* Top bar */}
         <div className="flex items-center justify-between py-2 text-sm border-b border-primary-500/30">
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="#">Kênh người bán</Link>
+            <Link to={import.meta.env.VITE_URL_SELLER_CLIENT}>Kênh người bán</Link>
             <span>Trở thành Người bán dược phẩm</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -53,11 +54,11 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
           <div className="flex items-center gap-4 w-full overflow-x-hidden">
             {/* Mobile menu button */}
             {isShowMenu && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden text-white hover:bg-primary-500"
-              onClick={onMenuClick}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden text-white hover:bg-primary-500"
+                onClick={onMenuClick}
               >
                 <Menu className="w-5 h-5" />
               </Button>
@@ -68,11 +69,19 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
               <div className="bg-white p-2 rounded-lg">
                 <div className="w-8 h-8 bg-gradient-to-br from-medical-blue to-medical-green rounded"></div>
               </div>
-              <span className="text-xl font-bold hidden md:inline truncate max-w-[200px]">{import.meta.env.VITE_APPLICATION_NAME || 'Tuan-Thanh PharmaMart'}</span>
+              <span className="text-xl font-bold hidden md:inline truncate max-w-[300px]">{import.meta.env.VITE_APPLICATION_NAME || 'Tuan-Thanh PharmaMart'}</span>
             </Link>
 
+            {/* Nút điều hướng tới mô hình khuyến nghị thuốc */}
+            <div className="flex-1 min-w-0 mx-4 flex justify-center bg-blue-500 rounded-lg">
+              <Button onClick={() => navigate('/recommendation')}  variant="ghost" size="sm" className="relative text-white hover:bg-primary-500 w-full">
+                <BookOpen className="w-5 h-5" />
+                <span>Gợi ý thuốc</span>
+              </Button>
+            </div>
+
             {/* Search bar */}
-            <div className="flex-1 min-w-0 mx-4">
+            {/* <div className="flex-1 min-w-0 mx-4">
               <div className='relative'>
                 <Input
                   type="text"
@@ -98,7 +107,7 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Action buttons */}
@@ -117,7 +126,7 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
                 <span className="hidden md:inline ml-1">Voucher</span>
               </Button>
             </Link>
-            
+
             <Link to="/wishlist">
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <Heart className="w-5 h-5" />

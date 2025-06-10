@@ -96,6 +96,26 @@ interface PaymentMethodType {
   description: string;
 }
 
+interface Order {
+  id: string;
+  user_id: string;
+  seller_id: string;
+  seller_name: string;
+  total_quantity: number;
+  original_items_total: number;
+  original_shipping_fee: number;
+  discount_amount_items: number;
+  discount_amount_shipping: number;
+  discount_amount_items_platform_allocated: number;
+  discount_amount_shipping_platform_allocated: number;
+  final_total: number;
+  payment_method: string;
+  order_status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled' | 'refunded';
+  payment_status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+  is_completed: boolean;
+  createdAt: string;
+}
+
 interface ApplyVoucheStorerResponse {
   voucher: Voucher;
   original_items_total: number;
@@ -787,11 +807,16 @@ const Checkout = () => {
 
         handleSaveVouchersUsage(newStoreOrders);
 
-        if (bodyPlaceOrder.payment_method === 'VNPay') {
-          // thực hiện gọi thanh toán VNPay
+        if (bodyPlaceOrder.payment_method.toUpperCase() === 'COD') {
+          // thực hiện gọi tạo thông tin thanh toán COD cho nhiều đơn hàng
+          handleCODPayment(newOrders);
+          navigate('/profile', { state: { tab: 'orders', isPlaceOrder: true } });
         }
-
-        navigate('/profile', { state: { tab: 'orders', isPlaceOrder: true } });
+        // so sánh payment_method với 'VNPAY' không phân biệt hoa thường
+        else if (bodyPlaceOrder.payment_method.toUpperCase() === 'VNPAY') {
+          // thực hiện gọi thanh toán VNPay chung cho tất cả các đơn hàng (vẫn tạo ra thông tin thanh toán cho từng đơn hàng)
+          handleVNPayPayment(newOrders);
+        }
       }
     }
     catch (error) {
@@ -803,6 +828,53 @@ const Checkout = () => {
     finally {
       setIsLoading(false);
     }
+  }
+
+  const handleCODPayment = (orders: Order[]) => {
+    const body = {
+      user_id: user.id,
+      orders
+    }
+
+    paymentApi.post(`/payments/cod`, body)
+    .then((response) => {
+      if (response.data.code === 0) {
+        const payment = response.data.data;
+        console.log('Các giao dịch được tạo ra: ', payment);
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    });
+  }
+
+  const handleVNPayPayment = (orders: Order[]) => {
+    const body = {
+      user_id: user.id,
+      orders,
+      bankCode: 'VNBANK',
+      language: 'vn',
+    }
+
+    paymentApi.post(`/payments/vnpay/create_payment_url/multiple`, body)
+    .then((response) => {
+      if (response.data.code === 0) {
+        const data = response.data.data;
+        const {url, payments} = data;
+        console.log('Các giao dịch được tạo ra: ', payments);
+        // chuyển hướng tới trang thanh toán
+        window.location.href = url;
+      }
+    })
+    .catch((error) => {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    });
   }
 
   const handleSaveVouchersUsage = async (newStoreOrders: StoreOrder[]) => {

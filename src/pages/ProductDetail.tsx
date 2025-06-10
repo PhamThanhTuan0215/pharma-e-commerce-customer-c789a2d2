@@ -104,6 +104,10 @@ const ProductDetail = () => {
       });
   };
 
+  const handleClickStore = (seller_id: string) => {
+    navigate(`/stores/${seller_id}`);
+  }
+
   useEffect(() => {
     fetchProduct();
     fetchReviews();
@@ -283,7 +287,7 @@ const ProductDetail = () => {
         {/* Back button */}
         <Button
           variant="ghost"
-          className="mb-4"
+          className="mb-4 border-2 border-gray-200 rounded-full"
           onClick={() => {
             if (tab === 'orders') {
               navigate('/profile', { state: { tab: 'orders', _selectedOrder: _selectedOrder } });
@@ -461,7 +465,7 @@ const ProductDetail = () => {
               <div className="flex items-center">
                 <span className="text-sm text-gray-600">
                   Nhà bán: &nbsp;
-                  <span className="text-sm font-bold text-blue-500">
+                  <span className="text-sm font-bold text-blue-500 cursor-pointer" onClick={() => handleClickStore(product.seller_id)}>
                     {product.seller_name}
                   </span>
                 </span>

@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import userApi from '@/services/api-user-service';
 import shipmentApi from '@/services/api-shipment-service';
 import orderApi from '@/services/api-order-service';
+import paymentApi from '@/services/api-payment-service';
 import { Checkbox } from "@/components/ui/checkbox";
 import apiGHN from '@/services/api-GHN';
 import {
@@ -133,7 +134,7 @@ interface Order {
   discount_amount_shipping_platform_allocated: number;
   final_total: number;
   payment_method: string;
-  order_status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
+  order_status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled' | 'refunded';
   payment_status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
   is_completed: boolean;
   createdAt: string;
@@ -289,7 +290,8 @@ const Profile = () => {
       confirmed: { variant: 'default' as const, color: 'bg-blue-100 text-blue-800' },
       shipping: { variant: 'default' as const, color: 'bg-orange-100 text-orange-800' },
       delivered: { variant: 'default' as const, color: 'bg-green-100 text-green-800' },
-      cancelled: { variant: 'destructive' as const, color: 'bg-red-100 text-red-800' }
+      cancelled: { variant: 'destructive' as const, color: 'bg-red-100 text-red-800' },
+      refunded: { variant: 'default' as const, color: 'bg-green-100 text-green-800' }
     };
 
     return statusMap[status as keyof typeof statusMap] || statusMap.pending;
@@ -301,7 +303,8 @@ const Profile = () => {
       'confirmed': 'Đã xác nhận',
       'shipping': 'Đang giao',
       'delivered': 'Đã giao',
-      'cancelled': 'Đã hủy'
+      'cancelled': 'Đã hủy',
+      'refunded': 'Đã hoàn tiền'
     };
     return statusMap[status] || status;
   };
@@ -355,55 +358,82 @@ const Profile = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="all">Tất cả</TabsTrigger>
-            <TabsTrigger value="pending">Chờ xác nhận</TabsTrigger>
-            <TabsTrigger value="confirmed">Đã xác nhận</TabsTrigger>
-            <TabsTrigger value="shipping">Đang giao</TabsTrigger>
-            <TabsTrigger value="delivered">Đã giao</TabsTrigger>
-            <TabsTrigger value="cancelled">Đã hủy</TabsTrigger>
-          </TabsList>
+          {/* <div className="relative mb-6">
+            <TabsList className="flex flex-wrap gap-2 pb-2 overflow-visible">
+              <TabsTrigger value="all" className="flex-1 min-w-[120px] z-10">Tất cả</TabsTrigger>
+              <TabsTrigger value="pending" className="flex-1 min-w-[120px] z-10">Chờ xác nhận</TabsTrigger>
+              <TabsTrigger value="confirmed" className="flex-1 min-w-[120px] z-10">Đã xác nhận</TabsTrigger>
+              <TabsTrigger value="shipping" className="flex-1 min-w-[120px] z-10">Đang giao</TabsTrigger>
+              <TabsTrigger value="delivered" className="flex-1 min-w-[120px] z-10">Đã giao</TabsTrigger>
+              <TabsTrigger value="cancelled" className="flex-1 min-w-[120px] z-10">Đã hủy</TabsTrigger>
+            </TabsList>
+          </div> */}
+
+          <div className="mb-10 sm:mb-5">
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 gap-2 pb-2">
+              <TabsTrigger value="all">Tất cả</TabsTrigger>
+              <TabsTrigger value="pending">Chờ xác nhận</TabsTrigger>
+              <TabsTrigger value="confirmed">Đã xác nhận</TabsTrigger>
+              <TabsTrigger value="shipping">Đang giao</TabsTrigger>
+              <TabsTrigger value="delivered">Đã giao</TabsTrigger>
+              <TabsTrigger value="cancelled">Đã hủy</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="all" className="space-y-4 mt-6">
             {orders.map((order) => (
               <Card key={order.id} className="border hover:border-primary-500 transition-colors">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-4">
+                  <div className="flex flex-col-reverse md:flex-row md:items-center justify-between mb-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 md:mt-0">
                       <span className="font-medium">Đơn hàng #{order.id}</span>
                       <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                     </div>
-                    {!order.is_completed ? <div className="flex items-center space-x-2">
-                      <Badge className={getStatusBadge(order.order_status || '').color}>
-                        {getOrderStatusText(order.order_status)}
-                      </Badge>
-                    </div> : <Badge className='bg-green-600 text-white'>
-                      Đã hoàn thành
-                    </Badge>}
+                    <div className="flex items-center space-x-2">
+                      {(order.payment_status === 'completed' && !order.is_completed )&& <Badge className='bg-green-600 text-white'>
+                        Đã thanh toán
+                      </Badge>}
+                      {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method !== 'COD') && order.payment_method.toUpperCase() === 'VNPAY' && <Badge className='bg-red-600 text-white'>
+                        Chưa thanh toán
+                      </Badge>}
+                      {!order.is_completed ? <div className="flex items-center space-x-2">
+                        <Badge className={getStatusBadge(order.order_status || '').color}>
+                          {getOrderStatusText(order.order_status)}
+                        </Badge>
+                      </div> : <Badge className='bg-green-600 text-white'>
+                        Đã hoàn thành
+                      </Badge>}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
                     <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Người bán: {order.seller_name}</p>
+                      <p className="text-sm text-gray-600">Nhà bán: <span onClick={() => handleClickStore(order.seller_id)} className="font-bold text-medical-blue cursor-pointer">{order.seller_name}</span></p>
                       <p className="text-sm text-gray-600">Số lượng: {order.total_quantity} sản phẩm</p>
                       <p className="font-medium">
                         Tổng tiền: <span className="text-medical-red">{formatPrice(order.final_total)}</span>
                       </p>
                     </div>
-                    <div className="flex space-x-2">
+                  </div>
+                  <div className="flex items-center justify-end mt-4">
+                    <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleViewOrderDetail(order)}>
                         <Eye className="w-4 h-4 mr-1" />
                         Chi tiết
                       </Button>
-                      {/* {order.order_status === 'delivered' && (
-                        <Button variant="outline" size="sm">
-                          <Star className="w-4 h-4 mr-1" />
-                          Đánh giá
+                      {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
+                        <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)}>
+                          Thanh toán
                         </Button>
-                      )} */}
+                      )}
                       {order.order_status === 'pending' && (
                         <Button variant="destructive" size="sm" onClick={() => confirmCancelOrder(order.id)}>
-                          Hủy đơn
+                          Hủy
+                        </Button>
+                      )}
+                      {order.is_completed && (
+                        <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
+                          Hoàn trả
                         </Button>
                       )}
                     </div>
@@ -421,42 +451,51 @@ const Profile = () => {
                   .map((order) => (
                     <Card key={order.id} className="border hover:border-primary-500 transition-colors">
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-4">
+                        <div className="flex flex-col-reverse md:flex-row md:items-center justify-between mb-4">
+                          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 md:mt-0">
                             <span className="font-medium">Đơn hàng #{order.id}</span>
                             <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                           </div>
-                          {!order.is_completed ? <div className="flex items-center space-x-2">
-                            <Badge className={getStatusBadge(order.order_status || '').color}>
-                              {getOrderStatusText(order.order_status)}
-                            </Badge>
-                          </div> : <Badge className='bg-green-600 text-white'>
-                            Đã hoàn thành
-                          </Badge>}
+                          <div className="flex items-center space-x-2">
+                            {order.payment_status === 'completed' && <Badge className='bg-green-600 text-white'>
+                              Đã thanh toán
+                            </Badge>}
+                            {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method !== 'COD') && order.payment_method.toUpperCase() === 'VNPAY' && <Badge className='bg-red-600 text-white'>
+                              Chưa thanh toán
+                            </Badge>}
+                            {!order.is_completed ? <div className="flex items-center space-x-2">
+                              <Badge className={getStatusBadge(order.order_status || '').color}>
+                                {getOrderStatusText(order.order_status)}
+                              </Badge>
+                            </div> : <Badge className='bg-green-600 text-white'>
+                              Đã hoàn thành
+                            </Badge>}
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between mt-4 pt-4 border-t">
                           <div className="space-y-1">
-                            <p className="text-sm text-gray-600">Người bán: {order.seller_name}</p>
+                            <p className="text-sm text-gray-600">Nhà bán: <span onClick={() => handleClickStore(order.seller_id)} className="font-bold text-medical-blue cursor-pointer">{order.seller_name}</span></p>
                             <p className="text-sm text-gray-600">Số lượng: {order.total_quantity} sản phẩm</p>
                             <p className="font-medium">
                               Tổng tiền: <span className="text-medical-red">{formatPrice(order.final_total)}</span>
                             </p>
                           </div>
-                          <div className="flex space-x-2">
+                        </div>
+                        <div className="flex items-center justify-end mt-4">
+                          <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleViewOrderDetail(order)}>
                               <Eye className="w-4 h-4 mr-1" />
                               Chi tiết
                             </Button>
-                            {/* {order.order_status === 'delivered' && (
-                              <Button variant="outline" size="sm">
-                                <Star className="w-4 h-4 mr-1" />
-                                Đánh giá
+                            {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
+                              <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)}>
+                                Thanh toán
                               </Button>
-                            )} */}
+                            )}
                             {order.order_status === 'pending' && (
                               <Button variant="destructive" size="sm" onClick={() => confirmCancelOrder(order.id)}>
-                                Hủy đơn
+                                Hủy
                               </Button>
                             )}
                           </div>
@@ -1503,6 +1542,14 @@ const Profile = () => {
     navigate(`/products/${item.product_id}`, { state: { tab: 'orders', _selectedOrder: selectedOrder } });
   };
 
+  const handleClickStore = (seller_id: string) => {
+    navigate(`/stores/${seller_id}`, { state: { tab: 'orders' } });
+  }
+
+  const handleRefundOrder = (order: Order) => {
+    console.log(order);
+  }
+
   const fetchOrders = () => {
     setIsLoading(true);
 
@@ -1570,6 +1617,40 @@ const Profile = () => {
           description: error.response.data.message || error.message,
         });
       })
+  }
+
+  const handlePayOrder = (order: Order) => {
+    if (order.payment_method.toUpperCase() === 'VNPAY') {
+      handleVNPayPayment(order);
+    }
+  }
+
+  const handleVNPayPayment = (order: Order) => {
+    const body = {
+      user_id: user.id,
+      order_id: order.id,
+      seller_id: order.seller_id,
+      amount: order.final_total,
+      bankCode: 'VNBANK',
+      language: 'vn',
+    }
+
+    paymentApi.post(`/payments/vnpay/create_payment_url`, body)
+      .then((response) => {
+        if (response.data.code === 0) {
+          const data = response.data.data;
+          const { url, payment } = data;
+          console.log('Giao dịch được tạo ra: ', payment);
+          // chuyển hướng tới trang thanh toán
+          window.location.href = url;
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      });
   }
 
   useEffect(() => {
