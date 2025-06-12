@@ -78,6 +78,7 @@ const Voucher = () => {
   const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
   const [usedVouchers, setUsedVouchers] = useState<Voucher[]>([]);
 
+  const [rawFilteredVouchers, setRawFilteredVouchers] = useState<Voucher[]>([]);
   const [filteredVouchers, setFilteredVouchers] = useState<Voucher[]>([]);
 
   const formatPrice = (price: number) => {
@@ -87,24 +88,57 @@ const Voucher = () => {
     }).format(price);
   };
 
+  // useEffect(() => {
+  // setFilteredVouchers([]);
+  // const timeout = setTimeout(() => {
+  //   if (activeTab === 'available') {
+  //     setFilteredVouchers(availableVouchers.filter(voucher => {
+  //       if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+  //       return true;
+  //     }));
+  //   } else {
+  //     setFilteredVouchers(usedVouchers.filter(voucher => {
+  //       if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
+  //       return true;
+  //     }));
+  //   }
+  // }, 0);
+
+  // return () => clearTimeout(timeout);
+  // }, [activeTab, filterType]);
+
+  // Bước 1: lọc dữ liệu khi activeTab hoặc filterType thay đổi
   useEffect(() => {
     if (activeTab === 'available') {
-      setFilteredVouchers(availableVouchers.filter(voucher => {
-        if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
-        return true;
-      }));
+      setRawFilteredVouchers(
+        availableVouchers.filter(voucher =>
+          filterType === 'all' || voucher.issuer_type === filterType
+        )
+      );
     } else {
-      setFilteredVouchers(usedVouchers.filter(voucher => {
-        if (filterType !== 'all' && voucher.issuer_type !== filterType) return false;
-        return true;
-      }));
+      setRawFilteredVouchers(
+        usedVouchers.filter(voucher =>
+          filterType === 'all' || voucher.issuer_type === filterType
+        )
+      );
     }
   }, [activeTab, filterType]);
 
+  // Bước 2: clear UI trước rồi mới hiển thị data (trigger re-render)
+  useEffect(() => {
+    setFilteredVouchers([]); // clear trước
+    const frame = requestAnimationFrame(() => {
+      setFilteredVouchers(rawFilteredVouchers); // sau 1 frame, set lại
+    });
+    return () => cancelAnimationFrame(frame); // cleanup nếu effect chạy lại
+  }, [rawFilteredVouchers]);
+
   const copyVoucherCode = (code: string) => {
     navigator.clipboard.writeText(code);
-    // You would typically show a toast notification here
-    console.log('Copied:', code);
+    toast({
+      variant: 'success',
+      description: 'Đã sao chép mã voucher',
+    });
   };
 
   const getVoucherIcon = (type: string) => {
@@ -278,8 +312,8 @@ const Voucher = () => {
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === tab.key
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               {tab.label} ({tab.count})

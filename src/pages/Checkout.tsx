@@ -228,6 +228,8 @@ const Checkout = () => {
 
   const [showVoucherDialog, setShowVoucherDialog] = useState(false);
 
+  const [voucherCode, setVoucherCode] = useState('');
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -400,7 +402,7 @@ const Checkout = () => {
             return {
               ...storeOrder,
               original_shipping_fee: shippingFee.original_shipping_fee || 0,
-              shipping_fee_after_discount: shippingFee.original_shipping_fee || 0,  
+              shipping_fee_after_discount: shippingFee.original_shipping_fee || 0,
               final_total: storeOrder.items_total_after_discount + shippingFee.original_shipping_fee || 0,
             };
           });
@@ -686,6 +688,21 @@ const Checkout = () => {
     }
   }
 
+  const handleEnterVoucherCode = async (voucherCode: string) => {
+
+    //tìm ra voucher có code trùng với voucherCode
+    const voucher = availableVouchers.find(voucher => voucher.code === voucherCode);
+    if (voucher) {
+      handleSelectVoucher(voucher);
+    }
+    else {
+      toast({
+        variant: 'error',
+        description: 'Mã voucher không hợp lệ',
+      });
+    }
+  }
+
   const handleCloseVoucherDialog = () => {
     setShowVoucherDialog(false);
   }
@@ -837,18 +854,18 @@ const Checkout = () => {
     }
 
     paymentApi.post(`/payments/cod`, body)
-    .then((response) => {
-      if (response.data.code === 0) {
-        const payment = response.data.data;
-        console.log('Các giao dịch được tạo ra: ', payment);
-      }
-    })
-    .catch((error) => {
-      toast({
-        variant: 'error',
-        description: error.response.data.message || error.message,
+      .then((response) => {
+        if (response.data.code === 0) {
+          const payment = response.data.data;
+          console.log('Các giao dịch được tạo ra: ', payment);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
       });
-    });
   }
 
   const handleVNPayPayment = (orders: Order[]) => {
@@ -860,21 +877,21 @@ const Checkout = () => {
     }
 
     paymentApi.post(`/payments/vnpay/create_payment_url/multiple`, body)
-    .then((response) => {
-      if (response.data.code === 0) {
-        const data = response.data.data;
-        const {url, payments} = data;
-        console.log('Các giao dịch được tạo ra: ', payments);
-        // chuyển hướng tới trang thanh toán
-        window.location.href = url;
-      }
-    })
-    .catch((error) => {
-      toast({
-        variant: 'error',
-        description: error.response.data.message || error.message,
+      .then((response) => {
+        if (response.data.code === 0) {
+          const data = response.data.data;
+          const { url, payments } = data;
+          console.log('Các giao dịch được tạo ra: ', payments);
+          // chuyển hướng tới trang thanh toán
+          window.location.href = url;
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
       });
-    });
   }
 
   const handleSaveVouchersUsage = async (newStoreOrders: StoreOrder[]) => {
@@ -1238,6 +1255,16 @@ const Checkout = () => {
             <DialogTitle>Chọn voucher</DialogTitle>
           </DialogHeader>
           <DialogDescription className="space-y-2 max-h-[80vh] overflow-y-auto">
+            {/* input chiều dài 2 phần, button 1 phần, có border */}
+            <div className="p-4 flex items-center gap-2 border rounded-lg">
+              <Input
+                placeholder="Nhập mã voucher"
+                value={voucherCode}
+                onChange={(e) => setVoucherCode(e.target.value)}
+                className="w-2/3 border rounded-lg p-2"
+              />
+              <Button onClick={() => handleEnterVoucherCode(voucherCode)} className="w-1/3 border rounded-lg p-2">Áp dụng</Button>
+            </div>
             {isLoading ? (
               <p>Đang tải voucher...</p>
             ) : availableVouchers.length > 0 ? (
