@@ -67,59 +67,6 @@ interface Ward {
   WardName: string;
 }
 
-// mock data address
-// const mockAddresses: AddressType[] = [
-//   {
-//     address_name: 'Nhà riêng',
-//     user_id: '1',
-//     full_name: 'Nguyễn Văn A',
-//     phone: '0912345678',
-//     province_id: 1,
-//     province_name: 'Hà Nội',
-//     district_id: 2,
-//     district_name: 'Quận Đống Đa',
-//     ward_code: '3',
-//     ward_name: 'Phường Láng Thượng',
-//     address_detail: 'Số 123, đường Láng',
-//     is_default: true
-//   }
-// ];
-
-// mock data orders
-// const mockOrders: Order[] = [
-//   {
-//     id: '1',
-//     user_id: '1',
-//     seller_id: '1',
-//     seller_name: 'ABC Store',
-//     total_quantity: 3,
-//     original_items_total: 33000,
-//     original_shipping_fee: 25000,
-//     discount_amount_items: 5000,
-//     discount_amount_shipping: 0,
-//     discount_amount_items_platform_allocated: 2800,
-//     discount_amount_shipping_platform_allocated: 0,
-//     final_total: 50200,
-//     payment_method: 'COD',
-//     order_status: 'pending',
-//     payment_status: 'pending',
-//     is_completed: false,
-//     createdAt: '2025-06-08T12:05:51.416Z',
-//   }
-// ];
-
-// const mockOrderItems: OrderItem[] = [
-//   {
-//     id: '1',
-//     order_id: '1',
-//     product_id: '1',
-//     product_name: 'Kem bôi da Ketoconazol 2%',
-//     product_price: 11000,
-//     product_quantity: 3,
-//     product_url_image: 'https://res.cloudinary.com/dyacy1md1/image/upload/v1747463989/ecommerce-pharmacy/products/jrxob9mq3cj0wsruixl4.jpg',
-//   }
-// ];
-
 interface Order {
   id: string;
   user_id: string;
@@ -158,6 +105,175 @@ type OrderType = Order & {
   total?: number;
 };
 
+interface OrderReturnRequest {
+  id: string;
+  order_id: string;
+  seller_id: string;
+  user_id: string;
+  reason: string;
+  return_shipping_fee_paid_by: string;
+  customer_message: string;
+  request_at: string;
+  response_message: string | null;
+  response_at: string | null;
+  status: string;
+  customer_shipping_address_id: string;
+  createdAt: string;
+  updatedAt: string;
+  Order: {
+    id: string;
+    total_quantity: number;
+    final_total: number;
+    createdAt: string;
+    updatedAt: string;
+  }
+}
+
+interface OrderReturnRequestItem {
+  id: string;
+  order_return_request_id: string;
+  returned_order_id: string | null;
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_quantity: number;
+  product_url_image: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ReturnedOrder {
+  id: string;
+  order_return_request_id: string;
+  order_id: string;
+  seller_id: string;
+  seller_name: string;
+  user_id: string;
+  total_quantity: number;
+  return_shipping_fee: number;
+  return_shipping_fee_paid_by: string;
+  refund_amount: number;
+  order_status: string;
+  payment_refund_status: string;
+  is_completed: boolean;
+  returned_at: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OrderReturnRequestItem {
+  id: string;
+  order_return_request_id: string;
+  returned_order_id: string | null;
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_quantity: number;
+  product_url_image: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const orderReturnRequestMock: OrderReturnRequest[] = [
+  {
+    id: "11",
+    order_id: "2",
+    seller_id: "2",
+    user_id: "1",
+    reason: "Sản phẩm không đúng mô tả",
+    return_shipping_fee_paid_by: "seller",
+    customer_message: "Sản phẩm không giống với hiển thị trên cửa hàng",
+    request_at: "2025-06-11T16:13:51.725Z",
+    response_message: "Đồng ý cho khách hàng hoàn trả sản phẩm",
+    response_at: "2025-06-11T16:14:33.969Z",
+    status: "accepted",
+    customer_shipping_address_id: "8",
+    createdAt: "2025-06-11T16:13:51.727Z",
+    updatedAt: "2025-06-11T16:14:33.969Z",
+    Order: {
+      id: "2",
+      total_quantity: 1,
+      final_total: 38800,
+      createdAt: "2025-06-08T12:05:51.417Z",
+      updatedAt: "2025-06-11T16:07:44.313Z"
+    }
+  },
+  {
+    id: "10",
+    order_id: "23",
+    seller_id: "1",
+    user_id: "1",
+    reason: "Sản phẩm bị lỗi, hư hỏng",
+    return_shipping_fee_paid_by: "seller",
+    customer_message: "Sản phẩm bị hư hỏng, không an toàn khi sử dụng",
+    request_at: "2025-06-11T16:01:43.962Z",
+    response_message: null,
+    response_at: null,
+    status: "requested",
+    customer_shipping_address_id: "8",
+    createdAt: "2025-06-11T16:01:43.965Z",
+    updatedAt: "2025-06-11T16:01:43.965Z",
+    Order: {
+      id: "23",
+      total_quantity: 1,
+      final_total: 32001,
+      createdAt: "2025-06-10T13:07:37.127Z",
+      updatedAt: "2025-06-11T15:33:40.522Z"
+    }
+  }
+]
+
+const orderReturnRequestItemMock: OrderReturnRequestItem[] = [
+  {
+    id: "10",
+    order_return_request_id: "10",
+    returned_order_id: null,
+    product_id: "1",
+    product_name: "Kem bôi da Ketoconazol 2%",
+    product_price: 11000,
+    product_quantity: 1,
+    product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1747463989/ecommerce-pharmacy/products/jrxob9mq3cj0wsruixl4.jpg",
+    createdAt: "2025-06-11T16:01:44.030Z",
+    updatedAt: "2025-06-11T16:01:44.030Z"
+  }
+]
+
+const returnedOrderMock: ReturnedOrder[] = [
+  {
+    id: "10",
+    order_return_request_id: "11",
+    order_id: "2",
+    seller_id: "2",
+    seller_name: "DEF Store",
+    user_id: "1",
+    total_quantity: 1,
+    return_shipping_fee: 29001,
+    return_shipping_fee_paid_by: "seller",
+    refund_amount: 28800,
+    order_status: "processing",
+    payment_refund_status: "pending",
+    is_completed: false,
+    returned_at: null,
+    createdAt: "2025-06-11T16:14:35.652Z",
+    updatedAt: "2025-06-11T16:14:35.652Z"
+  }
+]
+
+const returnedOrderItemMock: OrderReturnRequestItem[] = [
+  {
+    id: "11",
+    order_return_request_id: "11",
+    returned_order_id: "10",
+    product_id: "6",
+    product_name: "Túi chườm nóng y tế",
+    product_price: 32000,
+    product_quantity: 1,
+    product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1749379245/ecommerce-pharmacy/products/yyomvugxpz5ipfqoub1g.webp",
+    createdAt: "2025-06-11T16:13:51.773Z",
+    updatedAt: "2025-06-11T16:14:35.697Z"
+  }
+]
+
 const Profile = () => {
 
   const { tab, isPlaceOrder, _selectedOrder } = useLocation().state || { tab: 'profile', isPlaceOrder: false, selectedOrderId: null };
@@ -178,6 +294,10 @@ const Profile = () => {
     else if (tab === 'addresses') {
       fetchAddresses();
     }
+    else if (tab === 'order-return') {
+      fetchOrderReturnRequests();
+      fetchReturnedOrders();
+    }
   }, [tab]);
 
   const menuItems = [
@@ -185,6 +305,12 @@ const Profile = () => {
     {
       id: 'orders', label: 'Đơn hàng', icon: Package, onClick: () => {
         fetchOrders();
+      }
+    },
+    {
+      id: 'order-return', label: 'Đơn hàng hoàn trả', icon: Package, onClick: () => {
+        fetchOrderReturnRequests();
+        fetchReturnedOrders();
       }
     },
     {
@@ -209,6 +335,10 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   const [avatarImage, setAvatarImage] = useState(null);
+
+  // Add new states for managing tabs
+  const [activeOrderTab, setActiveOrderTab] = useState('all');
+  const [activeOrderReturnTab, setActiveOrderReturnTab] = useState('order-return-requests');
 
   const fileInputRef = useRef(null);
   const [previewAvatar, setPreviewAvatar] = useState(null);
@@ -263,6 +393,18 @@ const Profile = () => {
   const [showCancelOrderDialog, setShowCancelOrderDialog] = useState(false);
   const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<string | null>(null);
 
+  const [orderReturnRequests, setOrderReturnRequests] = useState<OrderReturnRequest[]>([]);
+  const [returnedOrders, setReturnedOrders] = useState<ReturnedOrder[]>([]);
+
+  const [orderReturnRequestItems, setOrderReturnRequestItems] = useState<OrderReturnRequestItem[]>([]);
+  const [returnedOrderItems, setReturnedOrderItems] = useState<OrderReturnRequestItem[]>([]);
+
+  const [showReturnRequestDialog, setShowReturnRequestDialog] = useState(false);
+  const [selectedReturnRequest, setSelectedReturnRequest] = useState<OrderReturnRequest | null>(null);
+
+  const [showReturnedOrderDialog, setShowReturnedOrderDialog] = useState(false);
+  const [selectedReturnedOrder, setSelectedReturnedOrder] = useState<ReturnedOrder | null>(null);
+
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
       ...userInfo,
@@ -308,6 +450,42 @@ const Profile = () => {
     };
     return statusMap[status] || status;
   };
+
+  const getReturnRequestStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'requested': 'Đã gửi yêu cầu',
+      'accepted': 'Đã đồng ý',
+      'rejected': 'Đã từ chối'
+    };
+    return statusMap[status] || status;
+  }
+
+  const getReturnRequestStatusColor = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'accepted': 'bg-green-100 text-green-800',
+      'rejected': 'bg-red-100 text-red-800'
+    };
+    return statusMap[status] || statusMap.pending;
+  }
+
+  const getReturnedOrderStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'processing': 'Đang xử lý',
+      'returned': 'Đã hoàn trả',
+      'failed': 'Đã hủy'
+    };
+    return statusMap[status] || status;
+  }
+
+  const getReturnedOrderStatusColor = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'processing': 'bg-yellow-100 text-yellow-800',
+      'returned': 'bg-green-100 text-green-800',
+      'failed': 'bg-red-100 text-red-800'
+    };
+    return statusMap[status] || statusMap.processing;
+  }
 
   const getPaymentStatusColor = (status: string) => {
     const statusMap: { [key: string]: string } = {
@@ -357,18 +535,7 @@ const Profile = () => {
         <CardTitle>Đơn hàng của tôi</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="all" className="w-full">
-          {/* <div className="relative mb-6">
-            <TabsList className="flex flex-wrap gap-2 pb-2 overflow-visible">
-              <TabsTrigger value="all" className="flex-1 min-w-[120px] z-10">Tất cả</TabsTrigger>
-              <TabsTrigger value="pending" className="flex-1 min-w-[120px] z-10">Chờ xác nhận</TabsTrigger>
-              <TabsTrigger value="confirmed" className="flex-1 min-w-[120px] z-10">Đã xác nhận</TabsTrigger>
-              <TabsTrigger value="shipping" className="flex-1 min-w-[120px] z-10">Đang giao</TabsTrigger>
-              <TabsTrigger value="delivered" className="flex-1 min-w-[120px] z-10">Đã giao</TabsTrigger>
-              <TabsTrigger value="cancelled" className="flex-1 min-w-[120px] z-10">Đã hủy</TabsTrigger>
-            </TabsList>
-          </div> */}
-
+        <Tabs defaultValue="all" value={activeOrderTab} onValueChange={setActiveOrderTab} className="w-full">
           <div className="mb-10 sm:mb-5">
             <TabsList className="grid grid-cols-3 sm:grid-cols-6 gap-2 pb-2">
               <TabsTrigger value="all">Tất cả</TabsTrigger>
@@ -390,7 +557,7 @@ const Profile = () => {
                       <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {(order.payment_status === 'completed' && !order.is_completed )&& <Badge className='bg-green-600 text-white'>
+                      {(order.payment_status === 'completed' && !order.is_completed) && <Badge className='bg-green-600 text-white'>
                         Đã thanh toán
                       </Badge>}
                       {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method !== 'COD') && order.payment_method.toUpperCase() === 'VNPAY' && <Badge className='bg-red-600 text-white'>
@@ -632,6 +799,285 @@ const Profile = () => {
     </Card>
   );
 
+  const renderOrderReturnContent = () => {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Đơn hàng hoàn trả</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="order-return-requests" value={activeOrderReturnTab} onValueChange={setActiveOrderReturnTab} className="w-full">
+            <TabsList className="w-full mb-6">
+              <TabsTrigger value="order-return-requests" className="flex-1">Yêu cầu hoàn trả</TabsTrigger>
+              <TabsTrigger value="returned-orders" className="flex-1">Đơn hàng hoàn trả</TabsTrigger>
+            </TabsList>
+
+            {/* Order Return Requests Tab */}
+            <TabsContent value="order-return-requests" className="space-y-4">
+              {orderReturnRequests.length > 0 ? (
+                orderReturnRequests.map((request) => (
+                  <Card key={request.id} className="border hover:border-primary-500 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col-reverse md:flex-row md:items-center justify-between mb-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 md:mt-0">
+                          <span className="font-medium">Yêu cầu #{request.id}</span>
+                          <span className="text-sm text-gray-500">{new Date(request.request_at).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={getReturnRequestStatusColor(request.status)}>
+                            {getReturnRequestStatusText(request.status)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Đơn hàng:</span> #{request.order_id}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Lý do hoàn trả:</span> {request.reason}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Phí vận chuyển:</span> {request.return_shipping_fee_paid_by === 'seller' ? 'Người bán thanh toán' : 'Người mua thanh toán'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Ghi chú:</span> {request.customer_message}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewReturnRequestDetail(request)}>
+                          <Eye className="w-4 h-4 mr-1" />
+                          Chi tiết
+                        </Button>
+                        {request.status === 'requested' && (
+                          <Button variant="destructive" size="sm" onClick={() => handleCancelReturnRequest(request.id)}>
+                            <Trash className="w-4 h-4 mr-1" />
+                            Hủy yêu cầu
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Không có yêu cầu hoàn trả nào
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Returned Orders Tab */}
+            <TabsContent value="returned-orders" className="space-y-4">
+              {returnedOrders.length > 0 ? (
+                returnedOrders.map((order) => (
+                  <Card key={order.id} className="border hover:border-primary-500 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col-reverse md:flex-row md:items-center justify-between mb-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 md:mt-0">
+                          <span className="font-medium">Đơn hoàn trả #{order.id}</span>
+                          <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={getReturnedOrderStatusColor(order.order_status)}>
+                            {getReturnedOrderStatusText(order.order_status)}
+                          </Badge>
+                          <Badge>
+                          {getPaymentStatusText(order.payment_refund_status)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Đơn hàng gốc:</span> #{order.order_id}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Người bán:</span> {order.seller_name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Số lượng:</span> {order.total_quantity} sản phẩm
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Phí vận chuyển hoàn trả:</span> {formatPrice(order.return_shipping_fee)}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Số tiền hoàn trả:</span> {formatPrice(order.refund_amount)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <Button variant="outline" size="sm" onClick={() => handleViewReturnedOrderDetail(order)}>
+                          <Eye className="w-4 h-4 mr-1" />
+                          Chi tiết
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Không có đơn hàng hoàn trả nào
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          {/* Return Request Detail Dialog */}
+          <Dialog open={showReturnRequestDialog} onOpenChange={setShowReturnRequestDialog}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Chi tiết yêu cầu hoàn trả #{selectedReturnRequest?.id}</DialogTitle>
+                <DialogDescription>
+                  Yêu cầu ngày {selectedReturnRequest && new Date(selectedReturnRequest.request_at).toLocaleDateString('vi-VN')}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                {/* Request Status */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-gray-600">Trạng thái yêu cầu</p>
+                      <Badge className={getReturnRequestStatusColor(selectedReturnRequest?.status)}>
+                        {getReturnRequestStatusText(selectedReturnRequest?.status)}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Đơn hàng gốc</p>
+                      <p className="font-medium">#{selectedReturnRequest?.order_id}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Request Items */}
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Sản phẩm yêu cầu hoàn trả</h4>
+                    {orderReturnRequestItems.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                        <img
+                          src={item.product_url_image}
+                          alt={item.product_name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium">{item.product_name}</h4>
+                          <p className="text-sm text-gray-600">
+                            {formatPrice(item.product_price)} x {item.product_quantity}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-medical-red">
+                            {formatPrice(item.product_price * item.product_quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowReturnRequestDialog(false)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Returned Order Detail Dialog */}
+          <Dialog open={showReturnedOrderDialog} onOpenChange={setShowReturnedOrderDialog}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Chi tiết đơn hoàn trả #{selectedReturnedOrder?.id}</DialogTitle>
+                <DialogDescription>
+                  Tạo ngày {selectedReturnedOrder && new Date(selectedReturnedOrder.createdAt).toLocaleDateString('vi-VN')}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                {/* Order Status */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-gray-600">Trạng thái đơn hoàn trả</p>
+                      <Badge className={getReturnedOrderStatusColor(selectedReturnedOrder?.order_status)}>
+                        {getReturnedOrderStatusText(selectedReturnedOrder?.order_status)}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Trạng thái hoàn tiền</p>
+                      <Badge>
+                        {getPaymentStatusText(selectedReturnedOrder?.payment_refund_status)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Sản phẩm hoàn trả</h4>
+                    {returnedOrderItems.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                        <img
+                          src={item.product_url_image}
+                          alt={item.product_name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium">{item.product_name}</h4>
+                          <p className="text-sm text-gray-600">
+                            {formatPrice(item.product_price)} x {item.product_quantity}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-medical-red">
+                            {formatPrice(item.product_price * item.product_quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Order Summary */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Phí vận chuyển hoàn trả</span>
+                    {selectedReturnedOrder?.return_shipping_fee_paid_by === 'seller' && <span className="text-sm text-blue-500">Do nhà bán trả</span>}
+                    {selectedReturnedOrder?.return_shipping_fee_paid_by === 'customer' && <span className="text-sm text-blue-500">Do khách hàng trả</span>}
+                    {selectedReturnedOrder?.return_shipping_fee_paid_by === 'platform' && <span className="text-sm text-blue-500">Do sàn trả</span>}
+                    <span>{formatPrice(selectedReturnedOrder?.return_shipping_fee || 0)}</span>
+                  </div>
+                  <div className="flex justify-between font-medium pt-2 border-t">
+                    <span>Tổng tiền hoàn trả <span className="text-sm text-gray-500">(Đã trừ voucher)</span></span>
+                    <span className="text-medical-red">{formatPrice(selectedReturnedOrder?.refund_amount || 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowReturnedOrderDialog(false)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const renderContent = () => {
     switch (activeTab) {
       case 'profile':
@@ -729,6 +1175,9 @@ const Profile = () => {
 
       case 'orders':
         return renderOrdersContent();
+
+      case 'order-return':
+        return renderOrderReturnContent();
 
       case 'addresses':
         return (
@@ -1557,10 +2006,7 @@ const Profile = () => {
       .then((response) => {
         if (response.data.code === 0) {
           const orders = response.data.data;
-          const formattedOrders = orders.map((order: any) => ({
-            ...order
-          }));
-          setOrders(formattedOrders);
+          setOrders(orders);
         }
       })
       .catch((error) => {
@@ -1572,17 +2018,6 @@ const Profile = () => {
       .finally(() => {
         setIsLoading(false);
       });
-    // // Trong thực tế, bạn sẽ gọi API để lấy danh sách đơn hàng
-    // const formattedOrders = mockOrders.map(order => ({
-    //   ...order,
-    //   date: new Date(order.createdAt).toLocaleDateString('vi-VN'),
-    //   status: order.order_status,
-    //   statusText: getOrderStatusText(order.order_status),
-    //   total: order.final_total
-    // }));
-
-    // setOrders(formattedOrders);
-    setIsLoading(false);
   }
 
   const confirmCancelOrder = (order_id: string) => {
@@ -1650,6 +2085,103 @@ const Profile = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      });
+  }
+
+  const fetchOrderReturnRequests = () => {
+    setIsLoading(true);
+    orderApi.get(`/order-returns/requests?user_id=${user.id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          const orderReturnRequests = response.data.data;
+          setOrderReturnRequests(orderReturnRequests);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);  
+      });
+  }
+
+  const fetchReturnedOrders = () => {
+    setIsLoading(true);
+    orderApi.get(`/order-returns/returned-orders?user_id=${user.id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          const returnedOrders = response.data.data;
+          setReturnedOrders(returnedOrders);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);  
+      });
+  }
+
+  const handleViewReturnRequestDetail = (request: OrderReturnRequest) => {
+    setSelectedReturnRequest(request);
+    setShowReturnRequestDialog(true);
+
+    const params = {
+      order_return_request_id: request.id,
+    }
+    
+    orderApi.get(`/order-returns/request/details`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const orderReturnRequestItems = response.data.data;
+          setOrderReturnRequestItems(orderReturnRequestItems);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);    
+      });
+  }
+
+  const handleCancelReturnRequest = (request_id: string) => {
+    // Implement the logic to cancel a return request
+    console.log(`Canceling return request with ID: ${request_id}`);
+  }
+
+  const handleViewReturnedOrderDetail = (returnedOrder: ReturnedOrder) => {
+    setSelectedReturnedOrder(returnedOrder);
+    setShowReturnedOrderDialog(true);
+
+    const params = {
+      returned_order_id: returnedOrder.id,
+    }
+
+    orderApi.get(`/order-returns/returned-order/details`, { params })
+      .then((response) => {
+        if (response.data.code === 0) {
+          const returnedOrderItems = response.data.data;
+          setReturnedOrderItems(returnedOrderItems);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);    
       });
   }
 
