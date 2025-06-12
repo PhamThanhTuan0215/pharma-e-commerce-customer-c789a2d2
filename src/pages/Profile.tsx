@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2 } from 'lucide-react';
+import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus  } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -174,105 +174,127 @@ interface OrderReturnRequestItem {
   updatedAt: string;
 }
 
-const orderReturnRequestMock: OrderReturnRequest[] = [
-  {
-    id: "11",
-    order_id: "2",
-    seller_id: "2",
-    user_id: "1",
-    reason: "Sản phẩm không đúng mô tả",
-    return_shipping_fee_paid_by: "seller",
-    customer_message: "Sản phẩm không giống với hiển thị trên cửa hàng",
-    request_at: "2025-06-11T16:13:51.725Z",
-    response_message: "Đồng ý cho khách hàng hoàn trả sản phẩm",
-    response_at: "2025-06-11T16:14:33.969Z",
-    status: "accepted",
-    customer_shipping_address_id: "8",
-    createdAt: "2025-06-11T16:13:51.727Z",
-    updatedAt: "2025-06-11T16:14:33.969Z",
-    Order: {
-      id: "2",
-      total_quantity: 1,
-      final_total: 38800,
-      createdAt: "2025-06-08T12:05:51.417Z",
-      updatedAt: "2025-06-11T16:07:44.313Z"
-    }
-  },
-  {
-    id: "10",
-    order_id: "23",
-    seller_id: "1",
-    user_id: "1",
-    reason: "Sản phẩm bị lỗi, hư hỏng",
-    return_shipping_fee_paid_by: "seller",
-    customer_message: "Sản phẩm bị hư hỏng, không an toàn khi sử dụng",
-    request_at: "2025-06-11T16:01:43.962Z",
-    response_message: null,
-    response_at: null,
-    status: "requested",
-    customer_shipping_address_id: "8",
-    createdAt: "2025-06-11T16:01:43.965Z",
-    updatedAt: "2025-06-11T16:01:43.965Z",
-    Order: {
-      id: "23",
-      total_quantity: 1,
-      final_total: 32001,
-      createdAt: "2025-06-10T13:07:37.127Z",
-      updatedAt: "2025-06-11T15:33:40.522Z"
-    }
-  }
+interface RefundOrderInfo {
+  order_id: string;
+  reason: string;
+  customer_message: string;
+  customer_shipping_address_id: string;
+  items: {
+    id: string;
+    product_id: string;
+    product_quantity: number;
+  }[]
+}
+
+const reasons_for_funded = [
+  'Sản phẩm bị lỗi, hư hỏng',
+  'Giao sai sản phẩm',
+  'Sản phẩm hết hạn sử dụng',
+  'Sản phẩm không đúng mô tả',
+  'Bao bì sản phẩm bị móp méo, rách, không đảm bảo',
+  'Khách đặt nhầm sản phẩm',
+  'Khách hàng đổi ý không muốn mua'
 ]
 
-const orderReturnRequestItemMock: OrderReturnRequestItem[] = [
-  {
-    id: "10",
-    order_return_request_id: "10",
-    returned_order_id: null,
-    product_id: "1",
-    product_name: "Kem bôi da Ketoconazol 2%",
-    product_price: 11000,
-    product_quantity: 1,
-    product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1747463989/ecommerce-pharmacy/products/jrxob9mq3cj0wsruixl4.jpg",
-    createdAt: "2025-06-11T16:01:44.030Z",
-    updatedAt: "2025-06-11T16:01:44.030Z"
-  }
-]
+// const orderReturnRequestMock: OrderReturnRequest[] = [
+//   {
+//     id: "11",
+//     order_id: "2",
+//     seller_id: "2",
+//     user_id: "1",
+//     reason: "Sản phẩm không đúng mô tả",
+//     return_shipping_fee_paid_by: "seller",
+//     customer_message: "Sản phẩm không giống với hiển thị trên cửa hàng",
+//     request_at: "2025-06-11T16:13:51.725Z",
+//     response_message: "Đồng ý cho khách hàng hoàn trả sản phẩm",
+//     response_at: "2025-06-11T16:14:33.969Z",
+//     status: "accepted",
+//     customer_shipping_address_id: "8",
+//     createdAt: "2025-06-11T16:13:51.727Z",
+//     updatedAt: "2025-06-11T16:14:33.969Z",
+//     Order: {
+//       id: "2",
+//       total_quantity: 1,
+//       final_total: 38800,
+//       createdAt: "2025-06-08T12:05:51.417Z",
+//       updatedAt: "2025-06-11T16:07:44.313Z"
+//     }
+//   },
+//   {
+//     id: "10",
+//     order_id: "23",
+//     seller_id: "1",
+//     user_id: "1",
+//     reason: "Sản phẩm bị lỗi, hư hỏng",
+//     return_shipping_fee_paid_by: "seller",
+//     customer_message: "Sản phẩm bị hư hỏng, không an toàn khi sử dụng",
+//     request_at: "2025-06-11T16:01:43.962Z",
+//     response_message: null,
+//     response_at: null,
+//     status: "requested",
+//     customer_shipping_address_id: "8",
+//     createdAt: "2025-06-11T16:01:43.965Z",
+//     updatedAt: "2025-06-11T16:01:43.965Z",
+//     Order: {
+//       id: "23",
+//       total_quantity: 1,
+//       final_total: 32001,
+//       createdAt: "2025-06-10T13:07:37.127Z",
+//       updatedAt: "2025-06-11T15:33:40.522Z"
+//     }
+//   }
+// ]
 
-const returnedOrderMock: ReturnedOrder[] = [
-  {
-    id: "10",
-    order_return_request_id: "11",
-    order_id: "2",
-    seller_id: "2",
-    seller_name: "DEF Store",
-    user_id: "1",
-    total_quantity: 1,
-    return_shipping_fee: 29001,
-    return_shipping_fee_paid_by: "seller",
-    refund_amount: 28800,
-    order_status: "processing",
-    payment_refund_status: "pending",
-    is_completed: false,
-    returned_at: null,
-    createdAt: "2025-06-11T16:14:35.652Z",
-    updatedAt: "2025-06-11T16:14:35.652Z"
-  }
-]
+// const orderReturnRequestItemMock: OrderReturnRequestItem[] = [
+//   {
+//     id: "10",
+//     order_return_request_id: "10",
+//     returned_order_id: null,
+//     product_id: "1",
+//     product_name: "Kem bôi da Ketoconazol 2%",
+//     product_price: 11000,
+//     product_quantity: 1,
+//     product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1747463989/ecommerce-pharmacy/products/jrxob9mq3cj0wsruixl4.jpg",
+//     createdAt: "2025-06-11T16:01:44.030Z",
+//     updatedAt: "2025-06-11T16:01:44.030Z"
+//   }
+// ]
 
-const returnedOrderItemMock: OrderReturnRequestItem[] = [
-  {
-    id: "11",
-    order_return_request_id: "11",
-    returned_order_id: "10",
-    product_id: "6",
-    product_name: "Túi chườm nóng y tế",
-    product_price: 32000,
-    product_quantity: 1,
-    product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1749379245/ecommerce-pharmacy/products/yyomvugxpz5ipfqoub1g.webp",
-    createdAt: "2025-06-11T16:13:51.773Z",
-    updatedAt: "2025-06-11T16:14:35.697Z"
-  }
-]
+// const returnedOrderMock: ReturnedOrder[] = [
+//   {
+//     id: "10",
+//     order_return_request_id: "11",
+//     order_id: "2",
+//     seller_id: "2",
+//     seller_name: "DEF Store",
+//     user_id: "1",
+//     total_quantity: 1,
+//     return_shipping_fee: 29001,
+//     return_shipping_fee_paid_by: "seller",
+//     refund_amount: 28800,
+//     order_status: "processing",
+//     payment_refund_status: "pending",
+//     is_completed: false,
+//     returned_at: null,
+//     createdAt: "2025-06-11T16:14:35.652Z",
+//     updatedAt: "2025-06-11T16:14:35.652Z"
+//   }
+// ]
+
+// const returnedOrderItemMock: OrderReturnRequestItem[] = [
+//   {
+//     id: "11",
+//     order_return_request_id: "11",
+//     returned_order_id: "10",
+//     product_id: "6",
+//     product_name: "Túi chườm nóng y tế",
+//     product_price: 32000,
+//     product_quantity: 1,
+//     product_url_image: "https://res.cloudinary.com/dyacy1md1/image/upload/v1749379245/ecommerce-pharmacy/products/yyomvugxpz5ipfqoub1g.webp",
+//     createdAt: "2025-06-11T16:13:51.773Z",
+//     updatedAt: "2025-06-11T16:14:35.697Z"
+//   }
+// ]
 
 const Profile = () => {
 
@@ -308,7 +330,7 @@ const Profile = () => {
       }
     },
     {
-      id: 'order-return', label: 'Đơn hàng hoàn trả', icon: Package, onClick: () => {
+      id: 'order-return', label: 'Đơn hàng hoàn trả', icon: PackageMinus, onClick: () => {
         fetchOrderReturnRequests();
         fetchReturnedOrders();
       }
@@ -405,6 +427,19 @@ const Profile = () => {
   const [showReturnedOrderDialog, setShowReturnedOrderDialog] = useState(false);
   const [selectedReturnedOrder, setSelectedReturnedOrder] = useState<ReturnedOrder | null>(null);
 
+  const [showCancelReturnRequestDialog, setShowCancelReturnRequestDialog] = useState(false);
+  const [selectedReturnRequestToCancel, setSelectedReturnRequestToCancel] = useState<string | null>(null);
+
+  const [showRefundOrderDialog, setShowRefundOrderDialog] = useState(false);
+  const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
+  const [refundOrderInfo, setRefundOrderInfo] = useState<RefundOrderInfo>({
+    order_id: '',
+    reason: '',
+    customer_message: '',
+    customer_shipping_address_id: '',
+    items: []
+  });
+
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
       ...userInfo,
@@ -498,9 +533,9 @@ const Profile = () => {
     return statusMap[status] || status;
   };
 
-  const getPaymentStatusText = (status: string) => {
+  const getPaymentStatusText = (status: string, isRefunded: boolean = false) => {
     const statusMap: { [key: string]: string } = {
-      'pending': 'Chờ thanh toán',
+      'pending': isRefunded ? 'Chờ hoàn tiền' : 'Chờ thanh toán',
       'completed': 'Đã thanh toán',
       'failed': 'Thanh toán thất bại',
       'cancelled': 'Đã hủy',
@@ -665,6 +700,11 @@ const Profile = () => {
                                 Hủy
                               </Button>
                             )}
+                            {order.is_completed && (
+                              <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
+                                Hoàn trả
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -682,7 +722,7 @@ const Profile = () => {
 
         {/* Order Detail Dialog */}
         <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
             <DialogHeader>
               <DialogTitle>Chi tiết đơn hàng (Mã đơn: #{selectedOrder?.id})</DialogTitle>
               <DialogDescription>
@@ -795,6 +835,157 @@ const Profile = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Refund Order Dialog, hiện thanh cuộn khi chiều cao không đủ */}
+        <Dialog open={showRefundOrderDialog} onOpenChange={setShowRefundOrderDialog}>
+          <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
+            <DialogHeader>
+              <DialogTitle>Hoàn trả đơn hàng</DialogTitle>
+              <DialogDescription>
+                Vui lòng chọn sản phẩm và điền thông tin hoàn trả
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Product Selection */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Chọn sản phẩm hoàn trả</h4>
+                {currentOrderItems.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                    <Checkbox
+                      checked={refundOrderInfo.items.some(i => i.id === item.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setRefundOrderInfo(prev => ({
+                            ...prev,
+                            items: [...prev.items, { id: item.id, product_id: item.product_id, product_quantity: 1 }]
+                          }));
+                        } else {
+                          setRefundOrderInfo(prev => ({
+                            ...prev,
+                            items: prev.items.filter(i => i.id !== item.id)
+                          }));
+                        }
+                      }}
+                    />
+                    <img
+                      src={item.product_url_image}
+                      alt={item.product_name}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.product_name}</h4>
+                      <p className="text-sm text-gray-600">
+                        {formatPrice(item.product_price)} x {item.product_quantity}
+                      </p>
+                      {refundOrderInfo.items.some(i => i.id === item.id) && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <Label>Số lượng hoàn trả:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max={item.product_quantity}
+                            value={refundOrderInfo.items.find(i => i.id === item.id)?.product_quantity || 1}
+                            onChange={(e) => {
+                              const quantity = Math.min(Math.max(1, parseInt(e.target.value) || 1), item.product_quantity);
+                              setRefundOrderInfo(prev => ({
+                                ...prev,
+                                items: prev.items.map(i => 
+                                  i.id === item.id 
+                                    ? { ...i, product_quantity: quantity }
+                                    : i
+                                )
+                              }));
+                            }}
+                            className="w-20"
+                          />
+                          <span className="text-sm text-gray-500">/ {item.product_quantity}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reason Selection */}
+              <div className="space-y-2">
+                <Label>Lý do hoàn trả</Label>
+                <Select
+                  onValueChange={(value) => {
+                    setRefundOrderInfo(prev => ({
+                      ...prev,
+                      reason: value,
+                      customer_message: value
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn lý do hoàn trả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reasons_for_funded.map((reason) => (
+                      <SelectItem key={reason} value={reason}>
+                        {reason}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Additional Message */}
+              <div className="space-y-2">
+                <Label>Tin nhắn bổ sung</Label>
+                <Input
+                  placeholder="Nhập tin nhắn bổ sung (nếu có)"
+                  value={refundOrderInfo.customer_message}
+                  onChange={(e) => {
+                    setRefundOrderInfo(prev => ({
+                      ...prev,
+                      customer_message: e.target.value
+                    }));
+                  }}
+                />
+              </div>
+
+              {/* Address Selection */}
+              <div className="space-y-2">
+                <Label>Địa chỉ lấy hàng hoàn trả</Label>
+                <Select
+                  onValueChange={(value) => {
+                    setRefundOrderInfo(prev => ({
+                      ...prev,
+                      customer_shipping_address_id: value
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn địa chỉ lấy hàng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {addressesInfo.map((address) => (
+                      <SelectItem key={address.id} value={address.id}>
+                        {address.address_name} - {address.address_detail}, {address.ward_name}, {address.district_name}, {address.province_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter className="flex space-x-2 justify-end">
+              <Button variant="outline" onClick={() => setShowRefundOrderDialog(false)}>
+                Đóng
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => refundOrder(refundOrderInfo)}
+                disabled={!refundOrderInfo.items.length || !refundOrderInfo.customer_message || !refundOrderInfo.customer_shipping_address_id}
+              >
+                Xác nhận hoàn trả
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
@@ -820,7 +1011,7 @@ const Profile = () => {
                     <CardContent className="p-4">
                       <div className="flex flex-col-reverse md:flex-row md:items-center justify-between mb-4">
                         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 md:mt-0">
-                          <span className="font-medium">Yêu cầu #{request.id}</span>
+                          <span className="font-medium">Đơn hàng gốc #{request.Order.id}</span>
                           <span className="text-sm text-gray-500">{new Date(request.request_at).toLocaleDateString('vi-VN')}</span>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -832,17 +1023,20 @@ const Profile = () => {
 
                       <div className="space-y-2 mb-4">
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Đơn hàng:</span> #{request.order_id}
-                        </p>
-                        <p className="text-sm text-gray-600">
                           <span className="font-medium">Lý do hoàn trả:</span> {request.reason}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Phí vận chuyển:</span> {request.return_shipping_fee_paid_by === 'seller' ? 'Người bán thanh toán' : 'Người mua thanh toán'}
+                          <span className="font-medium">Phí vận chuyển:</span> {request.return_shipping_fee_paid_by === 'seller' ? 'Nhà bán thanh toán' : 'Người mua thanh toán'}
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Ghi chú:</span> {request.customer_message}
                         </p>
+                        {request.response_message && <p className={`text-sm ${request.status === 'accepted' ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className="font-medium">Trả lời từ nhà bán:</span> {request.response_message}
+                        </p>}
+                        {!request.response_message && <p className="text-sm text-yellow-600">
+                          <span>Đang chờ phản hồi</span>
+                        </p>}
                       </div>
 
                       <div className="flex items-center justify-end space-x-2">
@@ -867,6 +1061,26 @@ const Profile = () => {
               )}
             </TabsContent>
 
+            {/* Cancel Return Request Dialog */}
+            <Dialog open={showCancelReturnRequestDialog} onOpenChange={setShowCancelReturnRequestDialog}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Hủy yêu cầu hoàn trả</DialogTitle>
+                  <DialogDescription>
+                    Bạn có chắc chắn muốn hủy yêu cầu hoàn trả này không? Hành động này không thể hoàn tác.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex space-x-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowCancelReturnRequestDialog(false)}>
+                    Đóng
+                  </Button>
+                  <Button variant="destructive" onClick={() => cancelReturnRequest(selectedReturnRequestToCancel)}>
+                    Xác nhận hủy
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {/* Returned Orders Tab */}
             <TabsContent value="returned-orders" className="space-y-4">
               {returnedOrders.length > 0 ? (
@@ -883,7 +1097,7 @@ const Profile = () => {
                             {getReturnedOrderStatusText(order.order_status)}
                           </Badge>
                           <Badge>
-                          {getPaymentStatusText(order.payment_refund_status)}
+                            {getPaymentStatusText(order.payment_refund_status, true)}
                           </Badge>
                         </div>
                       </div>
@@ -893,7 +1107,7 @@ const Profile = () => {
                           <span className="font-medium">Đơn hàng gốc:</span> #{order.order_id}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Người bán:</span> {order.seller_name}
+                          <span className="font-medium">Nhà bán:</span> <span onClick={() => handleClickStore(order.seller_id)} className="text-blue-500 cursor-pointer font-bold">{order.seller_name}</span>
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Số lượng:</span> {order.total_quantity} sản phẩm
@@ -925,9 +1139,9 @@ const Profile = () => {
 
           {/* Return Request Detail Dialog */}
           <Dialog open={showReturnRequestDialog} onOpenChange={setShowReturnRequestDialog}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
               <DialogHeader>
-                <DialogTitle>Chi tiết yêu cầu hoàn trả #{selectedReturnRequest?.id}</DialogTitle>
+                <DialogTitle>Chi tiết yêu cầu hoàn trả (Đơn hàng #{selectedReturnRequest?.order_id})</DialogTitle>
                 <DialogDescription>
                   Yêu cầu ngày {selectedReturnRequest && new Date(selectedReturnRequest.request_at).toLocaleDateString('vi-VN')}
                 </DialogDescription>
@@ -992,7 +1206,7 @@ const Profile = () => {
 
           {/* Returned Order Detail Dialog */}
           <Dialog open={showReturnedOrderDialog} onOpenChange={setShowReturnedOrderDialog}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
               <DialogHeader>
                 <DialogTitle>Chi tiết đơn hoàn trả #{selectedReturnedOrder?.id}</DialogTitle>
                 <DialogDescription>
@@ -1013,7 +1227,7 @@ const Profile = () => {
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Trạng thái hoàn tiền</p>
                       <Badge>
-                        {getPaymentStatusText(selectedReturnedOrder?.payment_refund_status)}
+                        {getPaymentStatusText(selectedReturnedOrder?.payment_refund_status, true)}
                       </Badge>
                     </div>
                   </div>
@@ -1967,6 +2181,8 @@ const Profile = () => {
   }
 
   const fetchAddresses = () => {
+    if (!isLoggedIn) return;
+
     setIsLoading(true);
 
     shipmentApi.get(`/shipments/addresses?user_id=${user.id}`)
@@ -1995,11 +2211,72 @@ const Profile = () => {
     navigate(`/stores/${seller_id}`, { state: { tab: 'orders' } });
   }
 
-  const handleRefundOrder = (order: Order) => {
-    console.log(order);
+  const handleRefundOrder = async (order: Order) => {
+    setRefundOrderInfo({
+      order_id: order.id,
+      reason: '',
+      customer_message: '',
+      customer_shipping_address_id: '',
+      items: []
+    });
+    setShowRefundOrderDialog(true);
+
+    setIsLoading(true);
+
+    //lấy các sản phẩm hiện trong đơn hàng để chọn hoàn trả
+    try {
+      const response = await orderApi.get(`/orders/details/${order.id}`);
+      if (response.data.code === 0) {
+        const orderItems = response.data.data;
+        setCurrentOrderItems(orderItems);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    setIsLoading(false);
+  }
+
+  const refundOrder = (refundOrderInfo: RefundOrderInfo) => {
+
+    setIsLoading(true);
+    orderApi.post(`/order-returns/request/${refundOrderInfo.order_id}`, refundOrderInfo)
+      .then((response) => {
+        if (response.data.code === 0) {
+          setShowRefundOrderDialog(false);
+          setRefundOrderInfo({
+            order_id: '',
+            reason: '',
+            customer_message: '',
+            customer_shipping_address_id: '',
+            items: []
+          });
+
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+
+          fetchOrderReturnRequests();
+          fetchReturnedOrders();
+          setActiveTab('order-return');
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+
+        setIsLoading(false);
+      });
   }
 
   const fetchOrders = () => {
+    if (!isLoggedIn) return;
+
     setIsLoading(true);
 
     orderApi.get(`/orders?user_id=${user.id}`)
@@ -2037,8 +2314,9 @@ const Profile = () => {
     orderApi.delete(`/orders/${order_id}`)
       .then((response) => {
         if (response.data.code === 0) {
-          const canceledOrder = response.data.data;
-          setOrders(prev => prev.map(order => order.id === canceledOrder.id ? canceledOrder : order));
+          const cancelledOrder = response.data.data;
+          cancelledOrder.payment_status = 'cancelled';
+          setOrders(prev => prev.map(order => order.id === cancelledOrder.id ? cancelledOrder : order));
 
           toast({
             variant: 'success',
@@ -2075,7 +2353,6 @@ const Profile = () => {
         if (response.data.code === 0) {
           const data = response.data.data;
           const { url, payment } = data;
-          console.log('Giao dịch được tạo ra: ', payment);
           // chuyển hướng tới trang thanh toán
           window.location.href = url;
         }
@@ -2089,6 +2366,8 @@ const Profile = () => {
   }
 
   const fetchOrderReturnRequests = () => {
+    if (!isLoggedIn) return;
+
     setIsLoading(true);
     orderApi.get(`/order-returns/requests?user_id=${user.id}`)
       .then((response) => {
@@ -2104,12 +2383,13 @@ const Profile = () => {
         });
       })
       .finally(() => {
-        setIsLoading(false);  
+        setIsLoading(false);
       });
   }
 
   const fetchReturnedOrders = () => {
-    setIsLoading(true);
+    if (!isLoggedIn) return;
+
     orderApi.get(`/order-returns/returned-orders?user_id=${user.id}`)
       .then((response) => {
         if (response.data.code === 0) {
@@ -2122,9 +2402,6 @@ const Profile = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
-      })
-      .finally(() => {
-        setIsLoading(false);  
       });
   }
 
@@ -2132,10 +2409,12 @@ const Profile = () => {
     setSelectedReturnRequest(request);
     setShowReturnRequestDialog(true);
 
+    setIsLoading(true);
+
     const params = {
       order_return_request_id: request.id,
     }
-    
+
     orderApi.get(`/order-returns/request/details`, { params })
       .then((response) => {
         if (response.data.code === 0) {
@@ -2150,18 +2429,15 @@ const Profile = () => {
         });
       })
       .finally(() => {
-        setIsLoading(false);    
+        setIsLoading(false);
       });
-  }
-
-  const handleCancelReturnRequest = (request_id: string) => {
-    // Implement the logic to cancel a return request
-    console.log(`Canceling return request with ID: ${request_id}`);
   }
 
   const handleViewReturnedOrderDetail = (returnedOrder: ReturnedOrder) => {
     setSelectedReturnedOrder(returnedOrder);
     setShowReturnedOrderDialog(true);
+
+    setIsLoading(true);
 
     const params = {
       returned_order_id: returnedOrder.id,
@@ -2181,12 +2457,41 @@ const Profile = () => {
         });
       })
       .finally(() => {
-        setIsLoading(false);    
+        setIsLoading(false);
       });
+  }
+
+  const handleCancelReturnRequest = (request_id: string) => {
+    setSelectedReturnRequestToCancel(request_id);
+    setShowCancelReturnRequestDialog(true);
+  }
+
+  const cancelReturnRequest = (request_id: string) => {
+    orderApi.delete(`/order-returns/request/${request_id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          setOrderReturnRequests(prev => prev.filter(request => request.id !== request_id));
+
+          setShowCancelReturnRequestDialog(false);
+          setSelectedReturnRequestToCancel(null);
+
+          toast({
+            variant: 'success',
+            description: response.data.message,
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response.data.message || error.message,
+        });
+      })
   }
 
   useEffect(() => {
     fetchUserInfo();
+    fetchAddresses();
   }, []);
 
   return (
