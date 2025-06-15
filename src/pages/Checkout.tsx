@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock, Package } from 'lucide-react';
+import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -186,7 +186,7 @@ const Checkout = () => {
     return <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container mx-auto px-4 py-6">
-        <div className="flex flex-col items-center justify-center h-screen">
+        <div className="flex flex-col items-center mt-20 h-screen">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Vui lòng đăng nhập để mua hàng</h1>
           <Button onClick={() => {
             navigate('/login');
@@ -197,6 +197,9 @@ const Checkout = () => {
   }
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddressLoading, setIsAddressLoading] = useState(false);
+  const [isPaymentMethodLoading, setIsPaymentMethodLoading] = useState(false);
+  const [isStoreOrdersLoading, setIsStoreOrdersLoading] = useState(false);
 
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
@@ -282,6 +285,7 @@ const Checkout = () => {
   }
 
   const fetchAddresses = async () => {
+    setIsAddressLoading(true);
     try {
       const response = await shipmentApi.get(`/shipments/addresses?user_id=${user.id}`);
       if (response.data.code === 0) {
@@ -298,11 +302,14 @@ const Checkout = () => {
         variant: 'error',
         description: error.response.data.message || error.message,
       });
+    } finally {
+      setIsAddressLoading(false);
     }
     return []; // Return empty array if there's an error
   }
 
   const fetchPaymentMethods = () => {
+    setIsPaymentMethodLoading(true);
     paymentApi.get(`/payments/methods`)
       .then((response) => {
         if (response.data.code === 0) {
@@ -315,10 +322,14 @@ const Checkout = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      })
+      .finally(() => {
+        setIsPaymentMethodLoading(false);
       });
   }
 
   const fetchStoreOrders = async (currentAddresses: AddressType[]) => {
+    setIsStoreOrdersLoading(true);
     try {
       const response = await customerApi.get(`/carts/checkout?user_id=${user.id}`)
       if (response.data.code === 0) {
@@ -370,6 +381,8 @@ const Checkout = () => {
         variant: 'error',
         description: error.response.data.message || error.message,
       });
+    } finally {
+      setIsStoreOrdersLoading(false);
     }
     return [];
   }
@@ -965,7 +978,12 @@ const Checkout = () => {
               </CardHeader>
               <CardContent>
                 <RadioGroup value={selectedAddress} onValueChange={handleChangeAddress}>
-                  {addresses.length > 0 ? addresses.map((address) => (
+                  {isAddressLoading ? (
+                    <div className="flex items-center justify-center h-24">
+                      <Loader2 className="w-4 h-4 mr-2 text-medical-blue animate-spin" />
+                      <span className="text-gray-600 text-sm">Đang tải địa chỉ...</span>
+                    </div>
+                  ) : addresses.length > 0 ? addresses.map((address) => (
                     <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-lg">
                       <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
                       <Label htmlFor={address.id} className="flex-1 cursor-pointer">
@@ -990,7 +1008,12 @@ const Checkout = () => {
             </Card>
 
             {/* Products by Store */}
-            {storeOrders.map((storeOrder) => (
+            {isStoreOrdersLoading ? (
+              <div className="flex items-center justify-center h-24">
+                <Loader2 className="w-4 h-4 mr-2 text-medical-blue animate-spin" />
+                <span className="text-gray-600 text-sm">Đang tải đơn hàng...</span>
+              </div>
+            ) : storeOrders.map((storeOrder) => (
               <Card key={storeOrder.seller_id}>
                 <CardHeader>
                   <CardTitle className="flex items-center text-lg">
@@ -1117,7 +1140,12 @@ const Checkout = () => {
               </CardHeader>
               <CardContent>
                 <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
-                  {paymentMethods.map((method) => (
+                  {isPaymentMethodLoading ? (
+                    <div className="flex items-center justify-center h-24">
+                      <Loader2 className="w-4 h-4 mr-2 text-medical-blue animate-spin" />
+                      <span className="text-gray-600 text-sm">Đang tải phương thức thanh toán...</span>
+                    </div>
+                  ) : paymentMethods.map((method) => (
                     <div key={method.id} className="flex items-center space-x-3 p-3 border rounded-lg">
                       <RadioGroupItem value={method.id} id={method.id} />
                       <Label htmlFor={method.id} className="flex-1 cursor-pointer">

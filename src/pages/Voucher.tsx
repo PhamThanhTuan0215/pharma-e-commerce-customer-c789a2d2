@@ -72,6 +72,20 @@ const Voucher = () => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  if (!isLoggedIn) {
+    return <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col items-center mt-20 h-screen">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Vui lòng đăng nhập để xem voucher</h1>
+          <Button onClick={() => {
+            navigate('/login');
+          }}>Đăng nhập</Button>
+        </div>
+      </div>
+    </div>;
+  }
+
   const [isAvailableVouchersLoading, setIsAvailableVouchersLoading] = useState(false);
   const [isUsedVouchersLoading, setIsUsedVouchersLoading] = useState(false);
 

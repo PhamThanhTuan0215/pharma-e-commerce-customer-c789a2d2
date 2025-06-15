@@ -349,6 +349,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPayOrder, setIsLoadingPayOrder] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -624,8 +625,8 @@ const Profile = () => {
                         Chi tiết
                       </Button>
                       {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
-                        <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)}>
-                          Thanh toán
+                        <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
+                          {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
                         </Button>
                       )}
                       {order.order_status === 'pending' && (
@@ -691,8 +692,8 @@ const Profile = () => {
                               Chi tiết
                             </Button>
                             {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
-                              <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)}>
-                                Thanh toán
+                              <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
+                                {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
                               </Button>
                             )}
                             {order.order_status === 'pending' && (
@@ -2348,6 +2349,8 @@ const Profile = () => {
       language: 'vn',
     }
 
+    setIsLoadingPayOrder(true);
+
     paymentApi.post(`/payments/vnpay/create_payment_url`, body)
       .then((response) => {
         if (response.data.code === 0) {
@@ -2362,6 +2365,9 @@ const Profile = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
+      })
+      .finally(() => {
+        setIsLoadingPayOrder(false);
       });
   }
 
