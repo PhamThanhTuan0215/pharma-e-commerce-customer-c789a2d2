@@ -374,8 +374,7 @@ const Checkout = () => {
     return [];
   }
 
-  const fetchShippingFee = async () => {
-    const address = addresses.find(address => address.id === selectedAddress);
+  const fetchShippingFee = async (address: AddressType) => {
     const store_ids = [];
     storeOrders.forEach(storeOrder => {
       store_ids.push(storeOrder.seller_id);
@@ -925,7 +924,10 @@ const Checkout = () => {
 
   const handleChangeAddress = (addressId: string) => {
     setSelectedAddress(addressId);
-    fetchShippingFee();
+    const address = addresses.find(address => address.id === addressId);
+    if (address) {
+      fetchShippingFee(address);
+    }
   }
 
   useEffect(() => {
