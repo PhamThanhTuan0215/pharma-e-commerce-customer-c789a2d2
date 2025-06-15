@@ -574,12 +574,12 @@ const Profile = () => {
         <Tabs defaultValue="all" value={activeOrderTab} onValueChange={setActiveOrderTab} className="w-full">
           <div className="mb-10 sm:mb-5">
             <TabsList className="grid grid-cols-3 sm:grid-cols-6 gap-2 pb-2">
-              <TabsTrigger value="all">Tất cả</TabsTrigger>
-              <TabsTrigger value="pending">Chờ xác nhận</TabsTrigger>
-              <TabsTrigger value="confirmed">Đã xác nhận</TabsTrigger>
-              <TabsTrigger value="shipping">Đang giao</TabsTrigger>
-              <TabsTrigger value="delivered">Đã giao</TabsTrigger>
-              <TabsTrigger value="cancelled">Đã hủy</TabsTrigger>
+              <TabsTrigger value="all" className="relative">Tất cả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.length}</span></TabsTrigger>
+              <TabsTrigger value="pending" className="relative">Chờ xác nhận <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
+              <TabsTrigger value="confirmed" className="relative">Đã xác nhận <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
+              <TabsTrigger value="shipping" className="relative">Đang giao <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
+              <TabsTrigger value="delivered" className="relative">Đã giao <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
+              <TabsTrigger value="cancelled" className="relative">Đã hủy <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
             </TabsList>
           </div>
 
@@ -1000,8 +1000,8 @@ const Profile = () => {
         <CardContent>
           <Tabs defaultValue="order-return-requests" value={activeOrderReturnTab} onValueChange={setActiveOrderReturnTab} className="w-full">
             <TabsList className="w-full mb-6">
-              <TabsTrigger value="order-return-requests" className="flex-1">Yêu cầu hoàn trả</TabsTrigger>
-              <TabsTrigger value="returned-orders" className="flex-1">Đơn hàng hoàn trả</TabsTrigger>
+              <TabsTrigger value="order-return-requests" className="flex-1 relative">Yêu cầu hoàn trả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orderReturnRequests.length}</span></TabsTrigger>
+              <TabsTrigger value="returned-orders" className="flex-1 relative">Đơn hàng hoàn trả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{returnedOrders.length}</span></TabsTrigger>
             </TabsList>
 
             {/* Order Return Requests Tab */}
