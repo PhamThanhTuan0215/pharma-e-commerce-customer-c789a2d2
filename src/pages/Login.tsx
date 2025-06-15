@@ -20,6 +20,8 @@ const Login = () => {
     phone: ''
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -33,6 +35,7 @@ const Login = () => {
 
     // login
     if (isLogin) {
+      setIsLoading(true);
       try {
         const response = await userApi.post('/users/login', formData);
         if(response.data.code === 0) {
@@ -53,6 +56,8 @@ const Login = () => {
           variant: "error",
           description: error.response.data.message || error.message
         });
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -74,6 +79,7 @@ const Login = () => {
         return;
       }
 
+      setIsLoading(true);
       try {
         const response = await userApi.post('/users/register', formData);
         if(response.data.code === 0) {
@@ -97,6 +103,8 @@ const Login = () => {
           variant: "error",
           description: error.response.data.message || error.message
         });
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -224,8 +232,8 @@ const Login = () => {
                 </div>
               )}
 
-              <Button type="submit" className="w-full bg-primary-600 hover:bg-primary-700">
-                {isLogin ? 'Đăng nhập' : 'Đăng ký'}
+              <Button type="submit" className="w-full bg-primary-600 hover:bg-primary-700" disabled={isLoading}>
+                {isLoading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Đăng ký')}
               </Button>
             </form>
 
