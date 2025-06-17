@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus  } from 'lucide-react';
+import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,7 +81,7 @@ interface Order {
   discount_amount_shipping_platform_allocated: number;
   final_total: number;
   payment_method: string;
-  order_status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled' | 'refunded';
+  order_status: 'pending' | 'confirmed' | 'ready_to_ship' | 'shipping' | 'delivered' | 'cancelled' | 'refunded';
   payment_status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
   is_completed: boolean;
   createdAt: string;
@@ -153,8 +153,8 @@ interface ReturnedOrder {
   return_shipping_fee: number;
   return_shipping_fee_paid_by: string;
   refund_amount: number;
-  order_status: string;
-  payment_refund_status: string;
+  order_status: 'processing' | 'shipping' | 'returned' | 'failed';
+  payment_refund_status: 'pending' | 'completed' | 'failed';
   is_completed: boolean;
   returned_at: string | null;
   createdAt: string;
@@ -466,6 +466,7 @@ const Profile = () => {
     const statusMap = {
       pending: { variant: 'secondary' as const, color: 'bg-yellow-100 text-yellow-800' },
       confirmed: { variant: 'default' as const, color: 'bg-blue-100 text-blue-800' },
+      ready_to_ship: { variant: 'default' as const, color: 'bg-orange-100 text-orange-800' },
       shipping: { variant: 'default' as const, color: 'bg-orange-100 text-orange-800' },
       delivered: { variant: 'default' as const, color: 'bg-green-100 text-green-800' },
       cancelled: { variant: 'destructive' as const, color: 'bg-red-100 text-red-800' },
@@ -479,6 +480,7 @@ const Profile = () => {
     const statusMap: { [key: string]: string } = {
       'pending': 'Chờ xác nhận',
       'confirmed': 'Đã xác nhận',
+      'ready_to_ship': 'Chờ lấy hàng',
       'shipping': 'Đang giao',
       'delivered': 'Đã giao',
       'cancelled': 'Đã hủy',
@@ -573,14 +575,37 @@ const Profile = () => {
       <CardContent>
         <Tabs defaultValue="all" value={activeOrderTab} onValueChange={setActiveOrderTab} className="w-full">
           <div className="mb-10 sm:mb-5">
-            <TabsList className="grid grid-cols-3 sm:grid-cols-6 gap-2 pb-2">
-              <TabsTrigger value="all" className="relative">Tất cả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.length}</span></TabsTrigger>
-              <TabsTrigger value="pending" className="relative">Chờ xác nhận <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
-              <TabsTrigger value="confirmed" className="relative">Đã xác nhận <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
-              <TabsTrigger value="shipping" className="relative">Đang giao <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
-              <TabsTrigger value="delivered" className="relative">Đã giao <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
-              <TabsTrigger value="cancelled" className="relative">Đã hủy <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
+            {/* nếu là màn hình bình thường */}
+            <div className="hidden sm:block">
+              <TabsList className="grid grid-cols-4 sm:grid-cols-7 gap-2 pb-2">
+              <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
+              <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
+              <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
+              <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
+              <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
+              <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
+              <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
             </TabsList>
+            </div>
+
+            {/* nếu là màn hình mobile */}
+            <div className="block sm:hidden">
+              <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
+                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
+              </TabsList>
+
+              <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
+                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
+                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
+              </TabsList>
+
+              <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
+                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
+                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
+                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
+              </TabsList>
+            </div>
           </div>
 
           <TabsContent value="all" className="space-y-4 mt-6">
@@ -593,12 +618,6 @@ const Profile = () => {
                       <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {(order.payment_status === 'completed' && !order.is_completed) && <Badge className='bg-green-600 text-white'>
-                        Đã thanh toán
-                      </Badge>}
-                      {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method !== 'COD') && order.payment_method.toUpperCase() === 'VNPAY' && <Badge className='bg-red-600 text-white'>
-                        Chưa thanh toán
-                      </Badge>}
                       {!order.is_completed ? <div className="flex items-center space-x-2">
                         <Badge className={getStatusBadge(order.order_status || '').color}>
                           {getOrderStatusText(order.order_status)}
@@ -624,7 +643,7 @@ const Profile = () => {
                         <Eye className="w-4 h-4 mr-1" />
                         Chi tiết
                       </Button>
-                      {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
+                      {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                         <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
                           {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
                         </Button>
@@ -646,7 +665,7 @@ const Profile = () => {
             ))}
           </TabsContent>
 
-          {['pending', 'confirmed', 'shipping', 'delivered', 'cancelled'].map((status) => (
+          {['pending', 'confirmed', 'ready_to_ship', 'shipping', 'delivered', 'cancelled'].map((status) => (
             <TabsContent key={status} value={status} className="mt-6">
               <div className="space-y-4">
                 {orders
@@ -660,12 +679,6 @@ const Profile = () => {
                             <span className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            {order.payment_status === 'completed' && <Badge className='bg-green-600 text-white'>
-                              Đã thanh toán
-                            </Badge>}
-                            {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method !== 'COD') && order.payment_method.toUpperCase() === 'VNPAY' && <Badge className='bg-red-600 text-white'>
-                              Chưa thanh toán
-                            </Badge>}
                             {!order.is_completed ? <div className="flex items-center space-x-2">
                               <Badge className={getStatusBadge(order.order_status || '').color}>
                                 {getOrderStatusText(order.order_status)}
@@ -691,7 +704,7 @@ const Profile = () => {
                               <Eye className="w-4 h-4 mr-1" />
                               Chi tiết
                             </Button>
-                            {(order.payment_status === 'pending' || order.payment_status === 'failed') && order.payment_method.toUpperCase() === 'VNPAY' && (
+                            {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                               <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
                                 {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
                               </Button>
@@ -891,8 +904,8 @@ const Profile = () => {
                               const quantity = Math.min(Math.max(1, parseInt(e.target.value) || 1), item.product_quantity);
                               setRefundOrderInfo(prev => ({
                                 ...prev,
-                                items: prev.items.map(i => 
-                                  i.id === item.id 
+                                items: prev.items.map(i =>
+                                  i.id === item.id
                                     ? { ...i, product_quantity: quantity }
                                     : i
                                 )
@@ -977,8 +990,8 @@ const Profile = () => {
               <Button variant="outline" onClick={() => setShowRefundOrderDialog(false)}>
                 Đóng
               </Button>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={() => refundOrder(refundOrderInfo)}
                 disabled={!refundOrderInfo.items.length || !refundOrderInfo.customer_message || !refundOrderInfo.customer_shipping_address_id}
               >
@@ -1000,8 +1013,8 @@ const Profile = () => {
         <CardContent>
           <Tabs defaultValue="order-return-requests" value={activeOrderReturnTab} onValueChange={setActiveOrderReturnTab} className="w-full">
             <TabsList className="w-full mb-6">
-              <TabsTrigger value="order-return-requests" className="flex-1 relative">Yêu cầu hoàn trả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{orderReturnRequests.length}</span></TabsTrigger>
-              <TabsTrigger value="returned-orders" className="flex-1 relative">Đơn hàng hoàn trả <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">{returnedOrders.length}</span></TabsTrigger>
+              <TabsTrigger value="order-return-requests" className="flex-1 relative mr-2 border-2 border-grey-300">Yêu cầu hoàn trả <span className="absolute -top-2 -right-2 text-red-500 px-2 py-1 text-lg">{orderReturnRequests.length}</span></TabsTrigger>
+              <TabsTrigger value="returned-orders" className="flex-1 relative mr-2 border-2 border-grey-300">Đơn hàng hoàn trả <span className="absolute -top-2 -right-2 text-red-500 px-2 py-1 text-lg">{returnedOrders.length}</span></TabsTrigger>
             </TabsList>
 
             {/* Order Return Requests Tab */}
