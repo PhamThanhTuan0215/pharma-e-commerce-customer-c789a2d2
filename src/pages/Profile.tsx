@@ -567,6 +567,10 @@ const Profile = () => {
     setIsLoading(false);
   };
 
+  const handleTrackOrder = async (order: OrderType) => {
+    console.log('chức năng chưa triển khai, đơn hàng:', order);
+  }
+
   const renderOrdersContent = () => (
     <Card>
       <CardHeader>
@@ -578,14 +582,14 @@ const Profile = () => {
             {/* nếu là màn hình bình thường */}
             <div className="hidden sm:block">
               <TabsList className="grid grid-cols-4 sm:grid-cols-7 gap-2 pb-2">
-              <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
-              <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
-              <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
-              <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
-              <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
-              <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
-              <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
-            </TabsList>
+                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
+                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
+                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
+                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
+                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
+                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
+              </TabsList>
             </div>
 
             {/* nếu là màn hình mobile */}
@@ -642,6 +646,10 @@ const Profile = () => {
                       <Button variant="outline" size="sm" onClick={() => handleViewOrderDetail(order)}>
                         <Eye className="w-4 h-4 mr-1" />
                         Chi tiết
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {['pending', 'confirmed', 'ready_to_ship', 'shipping'].includes(order.order_status) ? 'Theo dõi đơn hàng' : 'Lịch sử vận chuyển'}
                       </Button>
                       {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                         <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
@@ -703,6 +711,10 @@ const Profile = () => {
                             <Button variant="outline" size="sm" onClick={() => handleViewOrderDetail(order)}>
                               <Eye className="w-4 h-4 mr-1" />
                               Chi tiết
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                              <MapPin className="w-4 h-4 mr-1" />
+                              {['pending', 'confirmed', 'ready_to_ship', 'shipping'].includes(order.order_status) ? 'Theo dõi đơn hàng' : 'Lịch sử vận chuyển'}
                             </Button>
                             {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                               <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
