@@ -653,17 +653,19 @@ const Profile = () => {
                       </Button>
                       {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                         <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
+                          <CreditCard className="w-4 h-4 mr-1" />
                           {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
+                        </Button>
+                      )}
+                      {order.is_completed && (
+                        <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
+                          <PackageMinus className="w-4 h-4 mr-1" />
+                          Hoàn trả
                         </Button>
                       )}
                       {order.order_status === 'pending' && (
                         <Button variant="destructive" size="sm" onClick={() => confirmCancelOrder(order.id)}>
                           Hủy
-                        </Button>
-                      )}
-                      {order.is_completed && (
-                        <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
-                          Hoàn trả
                         </Button>
                       )}
                     </div>
@@ -718,17 +720,19 @@ const Profile = () => {
                             </Button>
                             {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                               <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
+                                <CreditCard className="w-4 h-4 mr-1" />
                                 {isLoadingPayOrder ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Đang xử lý</span> : 'Thanh toán'}
+                              </Button>
+                            )}
+                            {order.is_completed && (
+                              <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
+                                <PackageMinus className="w-4 h-4 mr-1" />
+                                Hoàn trả
                               </Button>
                             )}
                             {order.order_status === 'pending' && (
                               <Button variant="destructive" size="sm" onClick={() => confirmCancelOrder(order.id)}>
                                 Hủy
-                              </Button>
-                            )}
-                            {order.is_completed && (
-                              <Button variant="outline" size="sm" onClick={() => handleRefundOrder(order)}>
-                                Hoàn trả
                               </Button>
                             )}
                           </div>
