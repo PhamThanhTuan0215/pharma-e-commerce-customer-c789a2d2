@@ -41,6 +41,29 @@ interface Product {
   actual_price: number;
 }
 
+interface Review {
+  id: string;
+  user_id: string;
+  seller_id: string;
+  order_id: string;
+  user_fullname: string;
+  product_id: string;
+  comment: string;
+  rating: number;
+  url_image_related: string;
+  createdAt: string;
+  updatedAt: string;
+  response_review: {
+    id: string;
+    review_id: string;
+    seller_name: string;
+    response_comment: string;
+    url_image_related: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
 const ProductDetail = () => {
   const { tab, _selectedOrder } = useLocation().state || { tab: 'profile', _selectedOrder: null };
 
@@ -50,10 +73,12 @@ const ProductDetail = () => {
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [product, setProduct] = useState<Product | null>(null);
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReviewToRemove, setSelectedReviewToRemove] = useState<string | null>(null);
   const [showRemoveReviewDialog, setShowRemoveReviewDialog] = useState(false);
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
 
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
@@ -99,6 +124,7 @@ const ProductDetail = () => {
         if (response.data.code === 0) {
           const reviews = response.data.data;
           setReviews(reviews);
+          console.log(reviews);
         }
       })
       .catch((error) => {
@@ -211,6 +237,11 @@ const ProductDetail = () => {
   const getProductDetail = (key: string): string => {
     const value = product?.product_details[key];
     return typeof value === 'string' ? value : '';
+  };
+
+  const handleImageClick = (imageUrl: string) => {
+    setCurrentImageUrl(imageUrl);
+    setShowImageDialog(true);
   };
 
   const handleAddToCart = () => {
@@ -623,6 +654,33 @@ const ProductDetail = () => {
                           </span>
                         </div>
                         <p className="text-gray-600">{review.comment}</p>
+                        {review.url_image_related && (
+                          <img
+                            src={review.url_image_related}
+                            alt="Review related image"
+                            className="mt-2 w-24 h-24 object-cover rounded-md cursor-pointer"
+                            onClick={() => handleImageClick(review.url_image_related)}
+                          />
+                        )}
+                        {review.response_review && (
+                          <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium text-blue-600">Phản hồi từ {review.response_review.seller_name}</span>
+                              <span className="text-sm text-gray-500">
+                                {new Date(review.response_review.updatedAt).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                            <p className="text-gray-600">{review.response_review.response_comment}</p>
+                            {review.response_review.url_image_related && (
+                              <img
+                                src={review.response_review.url_image_related}
+                                alt="Response related image"
+                                className="mt-2 w-24 h-24 object-cover rounded-md cursor-pointer"
+                                onClick={() => handleImageClick(review.response_review.url_image_related)}
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {isLoggedIn && user.id === review.user_id && (
@@ -685,6 +743,21 @@ const ProductDetail = () => {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowRemoveReviewDialog(false)}>Hủy</Button>
                 <Button variant="destructive" onClick={() => removeReview(selectedReviewToRemove)}>Xóa</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Image Dialog */}
+          <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Xem ảnh</DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center items-center">
+                <img src={currentImageUrl} alt="Full size image" className="max-w-full h-auto" />
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setShowImageDialog(false)}>Đóng</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
