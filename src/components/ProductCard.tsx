@@ -86,9 +86,9 @@ const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: P
         <div className="flex items-center justify-between mb-2">
           <div>
             {/* hiển thị giá gốc bị gạch và giá thực tế */}
-            <span className="text-lg font-bold text-gray-500 line-through mr-2">
+            {product.retail_price != product.actual_price && <span className="text-lg font-bold text-gray-500 line-through mr-2">
               {formatPrice(product.retail_price)}
-            </span>
+            </span>}
             <span className="text-lg font-bold text-medical-red mr-2">
               {formatPrice(product.actual_price)}
             </span>

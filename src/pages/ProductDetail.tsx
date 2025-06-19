@@ -346,9 +346,11 @@ const ProductDetail = () => {
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{getProductDetail("Tên hiển thị") || product.name}</h1>
 
               <div className="flex items-center space-x-4 mb-4">
-                <span className="text-2xl font-bold text-gray-500 line-through mr-2">
-                  {formatPrice(product.retail_price)}
-                </span>
+                {product.retail_price != product.actual_price && (
+                  <span className="text-2xl font-bold text-gray-500 line-through mr-2">
+                    {formatPrice(product.retail_price)}
+                  </span>
+                )}
                 <span className="text-3xl font-bold text-medical-red">
                   {formatPrice(product.actual_price)}
                 </span>
