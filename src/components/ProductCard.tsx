@@ -14,7 +14,12 @@ interface Product {
   seller_name: string;
   product_details: {
     [key: string]: string;
-  }
+  };
+  promotion_name: string;
+  promotion_value_percent: number;
+  promotion_start_date: string;
+  promotion_end_date: string;
+  actual_price: number;
 }
 
 interface ProductCardProps {
@@ -46,6 +51,10 @@ const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: P
   return (
     <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div className="relative aspect-square overflow-hidden">
+        {/* hiển thị promotion_value_percent ở gốc trái tấm ảnh, chỉ bo tròn góc chứ không bo tròn toàn bộ */}
+        {product.promotion_value_percent !== 0 && <div className="absolute top-2 left-2 bg-medical-red text-white px-4 py-1 rounded-br-full text-lg z-[5]">
+          {product.promotion_value_percent}%
+        </div>}
         <img
           src={product.url_image || "/default-product.png"}
           alt={product.name}
@@ -76,8 +85,12 @@ const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: P
 
         <div className="flex items-center justify-between mb-2">
           <div>
-            <span className="text-lg font-bold text-medical-red">
+            {/* hiển thị giá gốc bị gạch và giá thực tế */}
+            <span className="text-lg font-bold text-gray-500 line-through mr-2">
               {formatPrice(product.retail_price)}
+            </span>
+            <span className="text-lg font-bold text-medical-red mr-2">
+              {formatPrice(product.actual_price)}
             </span>
             {product.product_details?.["Đơn vị tính"] && <span className="text-sm text-gray-500 ml-2">
               / {product.product_details?.["Đơn vị tính"]}

@@ -46,7 +46,12 @@ interface Product {
   seller_name: string;
   product_details: {
     [key: string]: string;
-  }
+  };
+  promotion_name: string;
+  promotion_value_percent: number;
+  promotion_start_date: string;
+  promotion_end_date: string;
+  actual_price: number;
 }
 
 const Products = () => {
@@ -381,7 +386,7 @@ const Products = () => {
                   Bộ lọc
                 </Button>
                 {isAdvancedFilterOpen && (
-                  <div className="absolute z-10 top-full left-0 mt-2 p-4 bg-white rounded-lg shadow-lg border w-64">
+                  <div className="absolute z-[20] top-full left-0 mt-2 p-4 bg-white rounded-lg shadow-lg border w-64">
                     <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium mb-1 block">Tên sản phẩm</label>
