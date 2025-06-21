@@ -15,12 +15,18 @@ interface CartItem {
   user_id: string;
   product_id: string;
   product_name: string;
+  original_price: string;
   price: string;
   product_url_image: string;
   quantity: number;
   seller_id: string;
   seller_name: string;
   selected?: boolean;
+  stock: number;
+  promotion_name: string;
+  promotion_value_percent: number;
+  promotion_start_date: string;
+  promotion_end_date: string;
 }
 interface Store {
   seller_id: string;
@@ -261,6 +267,10 @@ const Cart = () => {
     return cartData.reduce((total, store) => total + getStoreQuantity(store), 0);
   };
 
+  const isOutOfStock = () => {
+    return cartData.some((store: any) => store.products.some((item: any) => item.stock === 0));
+  };
+
   const getSelectedItemsCount = () => {
     return cartData.reduce((count, store) =>
       count + store.products.filter(item => item.selected).length, 0
@@ -405,6 +415,11 @@ const Cart = () => {
                                 <div className="flex-1">
                                   <h4 className="font-medium text-gray-900 mb-1">{item.product_name}</h4>
                                   <div className="flex items-center gap-2">
+                                    {Number(item.original_price) !== Number(item.price) && (
+                                      <span className="text-sm text-gray-500 line-through">
+                                        {formatPrice(Number(item.original_price))}
+                                      </span>
+                                    )}
                                     <span className="text-lg font-bold text-medical-red">
                                       {formatPrice(Number(item.price))}
                                     </span>
@@ -413,24 +428,28 @@ const Cart = () => {
                               </div>
 
                               <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => decreaseQuantity(item)}
-                                    disabled={item.quantity <= 1}
-                                  >
-                                    <Minus className="w-4 h-4" />
-                                  </Button>
-                                  <span className="w-8 text-center">{item.quantity}</span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => increaseQuantity(item)}
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                  </Button>
-                                </div>
+                                {item.stock === 0 ? (
+                                  <span className="text-sm text-red-500 bg-red-100 px-2 py-1 rounded-md">Hết hàng</span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => decreaseQuantity(item)}
+                                      disabled={item.quantity <= 1}
+                                    >
+                                      <Minus className="w-4 h-4" />
+                                    </Button>
+                                    <span className="w-8 text-center">{item.quantity}</span>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => increaseQuantity(item)}
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                )}
 
                                 <Button
                                   variant="ghost"
@@ -491,10 +510,10 @@ const Cart = () => {
                         <span className="text-gray-500 text-sm italic">(không bao gồm phí vận chuyển)</span>
                       </div>
 
-                      <Link to="/checkout">
+                      <Link to={getTotalQuantity() === 0 || isOutOfStock() ? '#' : '/checkout'}>
                         <Button
                           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
-                          disabled={getTotalQuantity() === 0}
+                          disabled={getTotalQuantity() === 0 || isOutOfStock()}
                         >
                           Mua hàng ({getTotalQuantity()})
                         </Button>

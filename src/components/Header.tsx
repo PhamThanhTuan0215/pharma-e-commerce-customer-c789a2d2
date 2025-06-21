@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package, BookOpen } from 'lucide-react';
+import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package, BookOpen, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -138,6 +138,13 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <ShoppingCart className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Giỏ hàng</span>
+              </Button>
+            </Link>
+
+            <Link to="/checkout">
+              <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
+                <CreditCard className="w-5 h-5" />
+                <span className="hidden md:inline ml-1">Thanh toán</span>
               </Button>
             </Link>
           </div>

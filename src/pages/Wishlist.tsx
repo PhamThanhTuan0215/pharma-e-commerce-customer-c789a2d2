@@ -7,8 +7,25 @@ import { useNavigate } from 'react-router-dom';
 import customerApi from '@/services/api-customer-service';
 import { toast } from '@/hooks/use-toast';
 
+interface WishlistItem {
+  id: string;
+  user_id: string;
+  product_id: string;
+  product_name: string;
+  original_price: string;
+  price: string;
+  product_url_image: string;
+  seller_id: string;
+  seller_name: string;
+  stock: number;
+  promotion_name: string;
+  promotion_value_percent: number;
+  promotion_start_date: string;
+  promotion_end_date: string;
+}
+
 const Wishlist = () => {
-  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -72,7 +89,7 @@ const Wishlist = () => {
 
   const handleAddToCart = (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
-    
+
     const payload = {
       user_id: user.id,
       product_id: item.product_id,
@@ -212,7 +229,7 @@ const Wishlist = () => {
                             <img
                               src={item.product_url_image || "/default-product.png"}
                               alt={item.product_name}
-                              className="w-full h-full object-cover rounded-lg"
+                              className="w-full h-full object-contain rounded-lg"
                             />
                           </div>
                         </div>
@@ -226,12 +243,25 @@ const Wishlist = () => {
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              {Number(item.original_price) !== Number(item.price) && (
+                                <span className="text-sm text-gray-500 line-through">
+                                  {formatPrice(Number(item.original_price))}
+                                </span>
+                              )}
                               <span className="text-xl font-bold text-medical-red">
-                                {formatPrice(item.price)}
+                                {formatPrice(Number(item.price))}
                               </span>
                             </div>
 
                           </div>
+
+                          {item.promotion_name && item.promotion_value_percent > 0 && (
+                            <div className="flex items-center gap-2 mt-2 bg-medical-red text-white px-2 py-1 rounded-md w-fit">
+                              <span className="text-sm">
+                                {item.promotion_name} - {item.promotion_value_percent}%
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Actions */}
@@ -239,10 +269,11 @@ const Wishlist = () => {
                           <Button
                             size="sm"
                             className="w-full bg-primary-600 hover:bg-primary-700"
+                            disabled={item.stock === 0}
                             onClick={(e) => handleAddToCart(e, item)}
                           >
                             <ShoppingCart className="w-4 h-4 mr-1" />
-                            Thêm vào giỏ
+                            {item.stock === 0 ? 'Hết hàng' : 'Thêm vào giỏ'}
                           </Button>
                           <Button
                             variant="outline"

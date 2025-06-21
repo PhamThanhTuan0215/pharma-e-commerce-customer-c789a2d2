@@ -1599,22 +1599,6 @@ const Profile = () => {
                         onChange={handleAddressInputChange}
                       />
                     </div>
-
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <div className="col-start-2 col-span-3 flex items-center space-x-2">
-                        <Checkbox
-                          id="is_default"
-                          checked={newAddressInfo.is_default}
-                          onCheckedChange={handleDefaultChange}
-                        />
-                        <label
-                          htmlFor="is_default"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Đặt làm địa chỉ mặc định
-                        </label>
-                      </div>
-                    </div>
                   </div>
 
                   <DialogFooter>

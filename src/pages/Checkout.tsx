@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock, Package, Loader2 } from 'lucide-react';
+import { MapPin, CreditCard, Tag, Truck, ChevronRight, Clock, Package, Loader2, X, Pencil, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,27 @@ import apiGHN from '@/services/api-GHN';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+
+interface Province {
+  ProvinceID: number;
+  Code: number;
+  ProvinceName: string;
+}
+
+interface District {
+  DistrictID: number;
+  ProvinceID: number;
+  Code: number;
+  DistrictName: string;
+}
+
+interface Ward {
+  WardCode: string;
+  DistrictID: number;
+  WardName: string;
+}
 
 interface AddressType {
   id?: string;
@@ -200,6 +220,7 @@ const Checkout = () => {
   const [isAddressLoading, setIsAddressLoading] = useState(false);
   const [isPaymentMethodLoading, setIsPaymentMethodLoading] = useState(false);
   const [isStoreOrdersLoading, setIsStoreOrdersLoading] = useState(false);
+  const [isShippingFeeLoading, setIsShippingFeeLoading] = useState(false);
 
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
@@ -233,36 +254,34 @@ const Checkout = () => {
 
   const [voucherCode, setVoucherCode] = useState('');
 
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+
+  const [addressForm, setAddressForm] = useState<AddressType>({
+    address_name: '',
+    user_id: '',
+    full_name: '',
+    phone: '',
+    province_id: 0,
+    province_name: '',
+    district_id: 0,
+    district_name: '',
+    ward_code: '',
+    ward_name: '',
+    address_detail: '',
+    is_default: false
+  });
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND'
     }).format(price);
   };
-
-  // const calculateStoresOriginalItemsTotal = () => {
-  //   return storeOrders.reduce((total, storeOrder) => {
-  //     return total + storeOrder.original_items_total;
-  //   }, 0);
-  // };
-
-  // const calculateStoresOriginalShippingFee = () => {
-  //   return storeOrders.reduce((total, storeOrder) => {
-  //     return total + storeOrder.original_shipping_fee;
-  //   }, 0);
-  // };
-
-  // const calculateStoresDiscountAmountItems = () => {
-  //   return storeOrders.reduce((total, storeOrder) => {
-  //     return total + storeOrder.discount_amount_items;
-  //   }, 0);
-  // };
-
-  // const calculateStoresDiscountAmountShipping = () => {
-  //   return storeOrders.reduce((total, storeOrder) => {
-  //     return total + storeOrder.discount_amount_shipping;
-  //   }, 0);
-  // };
 
   const calculateGrandItemsTotal = () => {
     return storeOrders.reduce((total, storeOrder) => {
@@ -388,6 +407,8 @@ const Checkout = () => {
   }
 
   const fetchShippingFee = async (address: AddressType) => {
+    setIsShippingFeeLoading(true);
+
     const store_ids = [];
     storeOrders.forEach(storeOrder => {
       store_ids.push(storeOrder.seller_id);
@@ -426,6 +447,9 @@ const Checkout = () => {
         variant: 'error',
         description: error.response.data.message || error.message,
       });
+    }
+    finally {
+      setIsShippingFeeLoading(false);
     }
   }
 
@@ -935,13 +959,296 @@ const Checkout = () => {
     }
   }
 
-  const handleChangeAddress = (addressId: string) => {
+  const handleChangeAddress = (addressId: string | null) => {
     setSelectedAddress(addressId);
     const address = addresses.find(address => address.id === addressId);
     if (address) {
       fetchShippingFee(address);
     }
   }
+
+  const fetchProvinces = async () => {
+    try {
+      const response = await apiGHN().get('/master-data/province');
+      if (response.data.code === 200) {
+        setProvinces(response.data.data);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response?.data?.message || error.message,
+      });
+    }
+  };
+
+  const fetchDistricts = async (provinceId: number) => {
+    try {
+      const response = await apiGHN().get('/master-data/district', {
+        params: {
+          province_id: provinceId
+        }
+      });
+      if (response.data.code === 200) {
+        setDistricts(response.data.data);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response?.data?.message || error.message,
+      });
+    }
+  };
+
+  const fetchWards = async (districtId: number) => {
+    try {
+      const response = await apiGHN().get('/master-data/ward', {
+        params: {
+          district_id: districtId
+        }
+      });
+      if (response.data.code === 200) {
+        setWards(response.data.data);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response?.data?.message || error.message,
+      });
+    }
+  };
+
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAddressForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProvinceChange = (value: string) => {
+    const provinceId = parseInt(value);
+    const province = provinces.find(p => p.ProvinceID === provinceId);
+    if (province) {
+      setAddressForm(prev => ({
+        ...prev,
+        province_id: provinceId,
+        province_name: province.ProvinceName,
+        district_id: 0,
+        district_name: '',
+        ward_code: '',
+        ward_name: ''
+      }));
+      fetchDistricts(provinceId);
+      setWards([]);
+    }
+  };
+
+  const handleDistrictChange = (value: string) => {
+    const districtId = parseInt(value);
+    const district = districts.find(d => d.DistrictID === districtId);
+    if (district) {
+      setAddressForm(prev => ({
+        ...prev,
+        district_id: districtId,
+        district_name: district.DistrictName,
+        ward_code: '',
+        ward_name: ''
+      }));
+      fetchWards(districtId);
+    }
+  };
+
+  const handleWardChange = (value: string) => {
+    const ward = wards.find(w => w.WardCode === value);
+    if (ward) {
+      setAddressForm(prev => ({
+        ...prev,
+        ward_code: ward.WardCode,
+        ward_name: ward.WardName
+      }));
+    }
+  };
+
+  const handleDefaultChange = (checked: boolean) => {
+    setAddressForm(prev => ({
+      ...prev,
+      is_default: checked
+    }));
+  };
+
+  const handleAddNewAddress = () => {
+    setIsEditingAddress(false);
+    setEditingAddressId(null);
+    setAddressForm({
+      address_name: '',
+      user_id: user.id,
+      full_name: '',
+      phone: '',
+      province_id: 0,
+      province_name: '',
+      district_id: 0,
+      district_name: '',
+      ward_code: '',
+      ward_name: '',
+      address_detail: '',
+      is_default: false
+    });
+    fetchProvinces();
+    setShowAddressDialog(true);
+  };
+
+  const handleEditAddress = (address: AddressType) => {
+    setIsEditingAddress(true);
+    setEditingAddressId(address.id);
+    setAddressForm(address);
+    fetchProvinces();
+    fetchDistricts(address.province_id);
+    fetchWards(address.district_id);
+    setShowAddressDialog(true);
+  };
+
+  const handleSaveAddress = () => {
+    if (!addressForm.address_name || !addressForm.full_name || !addressForm.phone || !addressForm.province_id || !addressForm.district_id || !addressForm.ward_code || !addressForm.address_detail) {
+      toast({
+        variant: 'error',
+        description: 'Vui lòng điền đầy đủ thông tin',
+      });
+      return;
+    }
+
+    const payload = {
+      address_name: addressForm.address_name,
+      user_id: user.id,
+      full_name: addressForm.full_name,
+      phone: addressForm.phone,
+      province_id: addressForm.province_id,
+      province_name: addressForm.province_name,
+      district_id: addressForm.district_id,
+      district_name: addressForm.district_name,
+      ward_code: addressForm.ward_code,
+      ward_name: addressForm.ward_name,
+      address_detail: addressForm.address_detail,
+      is_default: addressForm.is_default
+    }
+
+    if (isEditingAddress) {
+      // Update existing address
+      shipmentApi.put(`/shipments/addresses/${editingAddressId}`, payload)
+        .then((response) => {
+          if (response.data.code === 0) {
+            const updatedAddress = response.data.data;
+            // cập nhật địa chỉ vào danh sách địa chỉ
+            const updatedAddresses = addresses.map(address => address.id === editingAddressId ? updatedAddress : address);
+            setAddresses(updatedAddresses);
+
+            setSelectedAddress(updatedAddress.id);
+            const slectedAddress = updatedAddresses.find(address => address.id === updatedAddress.id);
+            if (slectedAddress) {
+              fetchShippingFee(slectedAddress);
+            }
+            setShowAddressDialog(false);
+
+            toast({
+              variant: 'success',
+              description: 'Cập nhật địa chỉ thành công',
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response?.data?.message || error.message,
+          });
+        });
+    } else {
+      // Add new address
+      shipmentApi.post('/shipments/addresses', payload)
+        .then((response) => {
+          if (response.data.code === 0) {
+            const newAddress = response.data.data;
+
+            // thêm địa chỉ mới vào danh sách địa chỉ
+            const newAddresses = [...addresses, newAddress];
+            setAddresses(newAddresses);
+
+            setSelectedAddress(newAddress.id);
+            const slectedAddress = newAddresses.find(address => address.id === newAddress.id);
+            if (slectedAddress) {
+              fetchShippingFee(slectedAddress);
+            }
+
+            setShowAddressDialog(false);
+
+            toast({
+              variant: 'success',
+              description: 'Thêm địa chỉ thành công',
+            });
+          }
+        })
+        .catch((error) => {
+          toast({
+            variant: 'error',
+            description: error.response?.data?.message || error.message,
+          });
+        });
+    }
+  };
+
+  const handleDeleteAddress = (address_id: string) => {
+    shipmentApi.delete(`/shipments/addresses/${address_id}`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          // xóa địa chỉ khỏi danh sách địa chỉ
+          const updatedAddresses = addresses.filter(address => address.id !== address_id);
+          setAddresses(updatedAddresses);
+
+          // nếu địa chỉ được chọn xóa là địa chỉ đang được chọn hiện tại thì chọn lại địa chỉ mặc định
+          if (selectedAddress === address_id) {
+            const defaultAddress = updatedAddresses.find(address => address.is_default);
+            if (defaultAddress) {
+              setSelectedAddress(defaultAddress.id);
+              const slectedAddress = updatedAddresses.find(address => address.id === defaultAddress.id);
+              if (slectedAddress) {
+                fetchShippingFee(slectedAddress);
+              }
+            } else {
+              // không còn địa chỉ nào
+              setSelectedAddress(null);
+            }
+          }
+
+          toast({
+            variant: 'success',
+            description: 'Xóa địa chỉ thành công',
+          });
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response?.data?.message || error.message,
+        });
+      });
+  };
+
+  const setDefaultAddress = (address_id: string) => {
+    shipmentApi.put(`/shipments/addresses/${address_id}/default`)
+      .then((response) => {
+        if (response.data.code === 0) {
+          toast({
+            variant: 'success',
+            description: 'Đặt địa chỉ mặc định thành công',
+          });
+          fetchAddresses();
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: 'error',
+          description: error.response?.data?.message || error.message,
+        });
+      });
+  };
 
   useEffect(() => {
     const initializeCheckout = async () => {
@@ -970,14 +1277,12 @@ const Checkout = () => {
                   <MapPin className="w-5 h-5 mr-2 text-medical-blue" />
                   Địa chỉ giao hàng
                 </CardTitle>
-                <Button onClick={() => {
-                  navigate('/profile', { state: { tab: 'addresses' } });
-                }} variant="outline" size="sm">
-                  Thay đổi
+                <Button onClick={handleAddNewAddress} disabled={isAddressLoading || isStoreOrdersLoading} variant="outline" size="sm">
+                  Thêm địa chỉ
                 </Button>
               </CardHeader>
               <CardContent>
-                <RadioGroup value={selectedAddress} onValueChange={handleChangeAddress}>
+                <RadioGroup value={selectedAddress} onValueChange={handleChangeAddress} disabled={isAddressLoading || isStoreOrdersLoading}>
                   {isAddressLoading ? (
                     <div className="flex items-center justify-center h-24">
                       <Loader2 className="w-4 h-4 mr-2 text-medical-blue animate-spin" />
@@ -987,11 +1292,37 @@ const Checkout = () => {
                     <div key={address.id} className="flex items-start space-x-3 p-3 border rounded-lg">
                       <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
                       <Label htmlFor={address.id} className="flex-1 cursor-pointer">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium">{address.address_name}</span>
-                          {address.is_default && (
-                            <Badge className='bg-primary-600 text-white'>Mặc định</Badge>
-                          )}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{address.address_name}</span>
+                            {address.is_default && (
+                              <Badge className='bg-primary-600 text-white'>Mặc định</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleEditAddress(address);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            {!address.is_default && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDeleteAddress(address.id);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         <p className="text-gray-600 text-sm mb-1">{address.address_detail}, {address.ward_name}, {address.district_name}, {address.province_name}</p>
                         <p className="text-gray-600 text-sm mb-1">Tên người nhận: {address.full_name}</p>
@@ -1006,6 +1337,114 @@ const Checkout = () => {
                 </RadioGroup>
               </CardContent>
             </Card>
+
+            {/* Address Dialog */}
+            <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
+              <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{isEditingAddress ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Tên địa chỉ</Label>
+                    <Input
+                      name="address_name"
+                      value={addressForm.address_name}
+                      onChange={handleAddressInputChange}
+                      placeholder="VD: Nhà, Công ty,..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Họ và tên người nhận</Label>
+                    <Input
+                      name="full_name"
+                      value={addressForm.full_name}
+                      onChange={handleAddressInputChange}
+                      placeholder="Nhập họ và tên người nhận"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Số điện thoại</Label>
+                    <Input
+                      name="phone"
+                      value={addressForm.phone}
+                      onChange={handleAddressInputChange}
+                      placeholder="Nhập số điện thoại"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tỉnh/Thành phố</Label>
+                    <Select value={addressForm.province_id.toString()} onValueChange={handleProvinceChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn Tỉnh/Thành phố" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((province) => (
+                          <SelectItem key={province.ProvinceID} value={province.ProvinceID.toString()}>
+                            {province.ProvinceName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quận/Huyện</Label>
+                    <Select
+                      value={addressForm.district_id.toString()}
+                      onValueChange={handleDistrictChange}
+                      disabled={!addressForm.province_id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn Quận/Huyện" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districts.map((district) => (
+                          <SelectItem key={district.DistrictID} value={district.DistrictID.toString()}>
+                            {district.DistrictName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phường/Xã</Label>
+                    <Select
+                      value={addressForm.ward_code}
+                      onValueChange={handleWardChange}
+                      disabled={!addressForm.district_id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn Phường/Xã" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {wards.map((ward) => (
+                          <SelectItem key={ward.WardCode} value={ward.WardCode}>
+                            {ward.WardName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Địa chỉ cụ thể</Label>
+                    <Input
+                      name="address_detail"
+                      value={addressForm.address_detail}
+                      onChange={handleAddressInputChange}
+                      placeholder="Số nhà, tên đường,..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAddressDialog(false)}>
+                    Hủy
+                  </Button>
+                  <Button onClick={handleSaveAddress}>
+                    {isEditingAddress ? 'Cập nhật' : 'Thêm mới'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Products by Store */}
             {isStoreOrdersLoading ? (
@@ -1241,16 +1680,17 @@ const Checkout = () => {
                   className="w-full bg-medical-red hover:bg-red-600 text-white py-3 text-lg font-semibold"
                   size="lg"
                   onClick={confirmPlaceOrder}
-                  disabled={isLoading}
+                  disabled={isLoading || isAddressLoading || isStoreOrdersLoading || isPaymentMethodLoading || isShippingFeeLoading || calculateFinalTotalAfterPlatformVoucher() === 0}
                 >
                   Đặt hàng
                 </Button>
 
                 <p className="text-xs text-gray-500 text-center">
                   Bằng việc đặt hàng, bạn đồng ý với{' '}
-                  <a href="#" className="text-primary-600 hover:underline">
+                  {/* <a href="#" className="text-primary-600 hover:underline">
                     Điều khoản sử dụng
-                  </a>{' '}
+                  </a>{' '} */}
+                  Điều khoản sử dụng
                   của PharmaMart
                 </p>
 
