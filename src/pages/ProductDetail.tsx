@@ -53,6 +53,7 @@ interface Review {
   url_image_related: string;
   createdAt: string;
   updatedAt: string;
+  is_edited: boolean;
   response_review: {
     id: string;
     review_id: string;
@@ -124,7 +125,6 @@ const ProductDetail = () => {
         if (response.data.code === 0) {
           const reviews = response.data.data;
           setReviews(reviews);
-          console.log(reviews);
         }
       })
       .catch((error) => {
@@ -683,11 +683,11 @@ const ProductDetail = () => {
                         )}
                       </div>
                     </div>
-                    {isLoggedIn && user.id === review.user_id && (
+                    {/* {isLoggedIn && user.id === review.user_id && (
                       <Button variant="ghost" size="icon" onClick={() => confirmRemoveReview(review.id)}>
                         <Trash className="w-4 h-4" />
                       </Button>
-                    )}
+                    )} */}
                   </div>
                 ))}
               </div> : <div className="space-y-4">
@@ -695,7 +695,7 @@ const ProductDetail = () => {
               </div>}
 
               {/* Write review */}
-              <div className="border-t pt-6">
+              {/* <div className="border-t pt-6">
                 <h4 className="font-medium mb-4">Viết đánh giá</h4>
                 <div className="space-y-4">
                   <div>
@@ -727,7 +727,7 @@ const ProductDetail = () => {
                     Gửi đánh giá
                   </Button>
                 </div>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 

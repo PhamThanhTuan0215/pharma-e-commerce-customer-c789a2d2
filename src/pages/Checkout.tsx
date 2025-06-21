@@ -1706,8 +1706,8 @@ const Checkout = () => {
                       <Button variant="outline" onClick={() => setShowPlaceOrderDialog(false)}>
                         Đóng
                       </Button>
-                      <Button variant="destructive" onClick={placeOrder}>
-                        Xác nhận đặt hàng
+                      <Button variant="destructive" onClick={placeOrder} disabled={isLoading}>
+                        {isLoading ? 'Đang đặt hàng...' : 'Xác nhận đặt hàng'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import productApi from '@/services/api-product-service';
 import userApi from '@/services/api-user-service';
 import shipmentApi from '@/services/api-shipment-service';
 import orderApi from '@/services/api-order-service';
@@ -31,6 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AddressType {
   id?: string;
@@ -184,6 +187,40 @@ interface RefundOrderInfo {
     product_id: string;
     product_quantity: number;
   }[]
+}
+
+interface Review {
+  id: string;
+  user_id: string;
+  seller_id: string;
+  order_id: string;
+  user_fullname: string;
+  product_id: string;
+  comment: string;
+  rating: number;
+  url_image_related: string;
+  createdAt: string;
+  updatedAt: string;
+  is_edited: boolean;
+  response_review: {
+    id: string;
+    review_id: string;
+    seller_name: string;
+    response_comment: string;
+    url_image_related: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
+interface submitReviewData {
+  user_id: string;
+  user_fullname: string;
+  order_id: string;
+  product_id: string;
+  rating: number;
+  comment: string;
+  image: File | null;
 }
 
 const reasons_for_funded = [
@@ -350,6 +387,7 @@ const Profile = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPayOrder, setIsLoadingPayOrder] = useState(false);
+  const [isLoadingSubmitReview, setIsLoadingSubmitReview] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -440,6 +478,27 @@ const Profile = () => {
     customer_shipping_address_id: '',
     items: []
   });
+
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [selectedOrderToReview, setSelectedOrderToReview] = useState<OrderType | null>(null);
+  const [reviewItems, setReviewItems] = useState<{
+    product_id: string;
+    rating: number;
+    comment: string;
+    image: File | null;
+  }[]>([]);
+
+  const [orderReviews, setOrderReviews] = useState<Review[]>([]);
+
+  const [productsSelectedToReview, setProductsSelectedToReview] = useState<string[]>([]);
+
+  const [showEditReviewDialog, setShowEditReviewDialog] = useState(false);
+  const [editingReview, setEditingReview] = useState<{
+    review: Review;
+    rating: number;
+    comment: string;
+    image: File | null;
+  } | null>(null);
 
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
@@ -571,6 +630,134 @@ const Profile = () => {
     console.log('chức năng chưa triển khai, đơn hàng:', order);
   }
 
+  const handleReviewOrder = async (order: OrderType) => {
+    setSelectedOrderToReview(order);
+    setShowReviewDialog(true);
+    setIsLoading(true);
+
+    try {
+      // Fetch order items and reviews in parallel
+      const [itemsResponse, reviewsResponse] = await Promise.all([
+        orderApi.get(`/orders/details/${order.id}`),
+        productApi.get(`/reviews/order/${order.id}`)
+      ]);
+
+      if (itemsResponse.data.code === 0) {
+        const orderItems = itemsResponse.data.data;
+        setOrderItems(orderItems);
+        // Initialize review items for products that haven't been reviewed
+        setReviewItems(orderItems.map(item => ({
+          product_id: item.product_id,
+          rating: 5,
+          comment: '',
+          image: null
+        })));
+      }
+
+      if (reviewsResponse.data.code === 0) {
+        const reviews = reviewsResponse.data.data;
+        setOrderReviews(reviews);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    }
+    setIsLoading(false);
+  }
+
+  const handleEditReview = (review: Review) => {
+    setEditingReview({
+      review,
+      rating: review.rating,
+      comment: review.comment,
+      image: null
+    });
+    setShowEditReviewDialog(true);
+  }
+
+  const submitEditReview = async () => {
+    if (!editingReview) return;
+
+    setIsLoadingSubmitReview(true);
+    const formData = new FormData();
+    formData.append('rating', editingReview.rating.toString());
+    formData.append('comment', editingReview.comment);
+    if (editingReview.image) {
+      formData.append('image_related', editingReview.image);
+    }
+
+    try {
+      const response = await productApi.put(`/reviews/update/${editingReview.review.id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.code === 0) {
+        const updatedReview = response.data.data;
+        // Update the review in orderReviews
+        setOrderReviews(orderReviews.map(review => 
+          review.id === updatedReview.id ? updatedReview : review
+        ));
+
+        toast({
+          variant: 'success',
+          description: 'Cập nhật đánh giá thành công',
+        });
+        setShowEditReviewDialog(false);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    } finally {
+      setIsLoadingSubmitReview(false);
+    }
+  }
+
+  const submitReview = async (submitReviewData: submitReviewData) => {
+    setIsLoadingSubmitReview(true);
+    const formData = new FormData();
+    formData.append('order_id', submitReviewData.order_id);
+    formData.append('rating', submitReviewData.rating.toString());
+    formData.append('comment', submitReviewData.comment);
+    formData.append('image_related', submitReviewData.image || null);
+
+    const params = {
+      user_id: submitReviewData.user_id,
+      user_fullname: submitReviewData.user_fullname,
+    }
+    try {
+      const response = await productApi.post(`/reviews/add/${submitReviewData.product_id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        params
+      });
+      if (response.data.code === 0) {
+        const newReview = response.data.data;
+        setOrderReviews([...orderReviews, newReview]);
+
+        toast({
+          variant: 'success',
+          description: 'Đánh giá thành công',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    } finally {
+      // xóa product_id khỏi productsSelectedToReview
+      setProductsSelectedToReview(productsSelectedToReview.filter(productId => productId !== submitReviewData.product_id));
+      setIsLoadingSubmitReview(false);
+    }
+  }
+
   const renderOrdersContent = () => (
     <Card>
       <CardHeader>
@@ -582,32 +769,32 @@ const Profile = () => {
             {/* nếu là màn hình bình thường */}
             <div className="hidden sm:block">
               <TabsList className="grid grid-cols-4 sm:grid-cols-7 gap-2 pb-2">
-                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
-                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
-                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
-                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
-                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
-                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
-                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
+                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả {orders.length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span>} </TabsTrigger>
+                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận {orders.filter(order => order.order_status === 'pending').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span>} </TabsTrigger>
+                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận {orders.filter(order => order.order_status === 'confirmed').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span>} </TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
+                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao {orders.filter(order => order.order_status === 'shipping').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span>} </TabsTrigger>
+                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao {orders.filter(order => order.order_status === 'delivered').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span>} </TabsTrigger>
+                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy {orders.filter(order => order.order_status === 'cancelled').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span>} </TabsTrigger>
               </TabsList>
             </div>
 
             {/* nếu là màn hình mobile */}
             <div className="block sm:hidden">
               <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
-                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span></TabsTrigger>
+                <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả {orders.length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span>} </TabsTrigger>
               </TabsList>
 
               <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
-                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span></TabsTrigger>
-                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span></TabsTrigger>
-                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span></TabsTrigger>
+                <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận {orders.filter(order => order.order_status === 'pending').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span>} </TabsTrigger>
+                <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận {orders.filter(order => order.order_status === 'confirmed').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span>} </TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
               </TabsList>
 
               <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
-                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span></TabsTrigger>
-                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span></TabsTrigger>
-                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span></TabsTrigger>
+                <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao {orders.filter(order => order.order_status === 'shipping').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span>} </TabsTrigger>
+                <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao {orders.filter(order => order.order_status === 'delivered').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span>} </TabsTrigger>
+                <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy {orders.filter(order => order.order_status === 'cancelled').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span>} </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -735,6 +922,12 @@ const Profile = () => {
                                 Hủy
                               </Button>
                             )}
+                            {order.is_completed && (
+                              <Button variant="outline" size="sm" onClick={() => handleReviewOrder(order)}>
+                                <Star className="w-4 h-4 mr-1" />
+                                Đánh giá
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -742,7 +935,7 @@ const Profile = () => {
                   ))}
                 {orders.filter((order) => order.order_status === status).length === 0 && (
                   <div className="text-center py-8 text-gray-500">
-                    Không có đơn hàng nào trong trạng thái này
+                    Không có đơn hàng nào
                   </div>
                 )}
               </div>
@@ -1012,6 +1205,283 @@ const Profile = () => {
                 disabled={!refundOrderInfo.items.length || !refundOrderInfo.customer_message || !refundOrderInfo.customer_shipping_address_id}
               >
                 Xác nhận hoàn trả
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Review Dialog */}
+        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+          <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
+            <DialogHeader>
+              <DialogTitle>Đánh giá sản phẩm</DialogTitle>
+              <DialogDescription>
+                Đơn hàng #{selectedOrderToReview?.id} - Đặt ngày {selectedOrderToReview && new Date(selectedOrderToReview.createdAt).toLocaleDateString('vi-VN')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {isLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orderItems.map((item, index) => {
+                    // Check if product has been reviewed
+                    const existingReview = orderReviews.find(review => review.product_id === item.product_id);
+
+                    return (
+                      <div key={item.id} className="border-b pb-4 mb-4 last:border-b-0">
+                        <div className="flex gap-4">
+                          <img
+                            src={item.product_url_image || '/default-product.png'}
+                            alt={item.product_name}
+                            className="w-20 h-20 object-cover rounded-lg"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium">{item.product_name}</h4>
+                            <p className="text-sm text-gray-600">Số lượng: {item.product_quantity}</p>
+                            <p className="text-sm text-gray-600">Giá: {formatPrice(item.product_price)}đ</p>
+                          </div>
+                        </div>
+
+                        {existingReview ? (
+                          <div className="mt-4 space-y-4">
+                            <div className="flex items-start gap-4">
+                              <Avatar className="w-10 h-10">
+                                <AvatarImage src="/default-avatar.png" />
+                                <AvatarFallback>A</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{existingReview.user_fullname}</p>
+                                  <p className="text-sm text-gray-500">
+                                    {new Date(existingReview.createdAt).toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 mt-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={cn(
+                                        "h-4 w-4",
+                                        star <= existingReview.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                                <p className="mt-2">{existingReview.comment}</p>
+                                {existingReview.url_image_related && (
+                                  <img
+                                    src={existingReview.url_image_related}
+                                    alt="Review image"
+                                    className="mt-2 w-24 h-24 object-cover rounded-lg"
+                                  />
+                                )}
+
+                                {existingReview.response_review && (
+                                  <div className="mt-4 pl-4 border-l-2 border-gray-200">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{existingReview.response_review.seller_name}</p>
+                                      <p className="text-sm text-gray-500">
+                                        {new Date(existingReview.response_review.createdAt).toLocaleDateString('vi-VN')}
+                                      </p>
+                                    </div>
+                                    <p className="mt-1">{existingReview.response_review.response_comment}</p>
+                                    {existingReview.response_review.url_image_related && (
+                                      <img
+                                        src={existingReview.response_review.url_image_related}
+                                        alt="Response image"
+                                        className="mt-2 w-24 h-24 object-cover rounded-lg"
+                                      />
+                                    )}
+                                  </div>
+                                )}
+
+                                {!existingReview.is_edited && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={() => handleEditReview(existingReview)}
+                                  >
+                                    Chỉnh sửa
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 space-y-4">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={cn(
+                                    "h-6 w-6 cursor-pointer",
+                                    star <= reviewItems[index]?.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                                  )}
+                                  onClick={() => {
+                                    const newReviewItems = [...reviewItems];
+                                    newReviewItems[index] = {
+                                      ...newReviewItems[index],
+                                      rating: star
+                                    };
+                                    setReviewItems(newReviewItems);
+                                  }}
+                                />
+                              ))}
+                            </div>
+
+                            <Textarea
+                              placeholder="Viết đánh giá của bạn..."
+                              value={reviewItems[index]?.comment}
+                              onChange={(e) => {
+                                const newReviewItems = [...reviewItems];
+                                newReviewItems[index] = {
+                                  ...newReviewItems[index],
+                                  comment: e.target.value
+                                };
+                                setReviewItems(newReviewItems);
+                              }}
+                            />
+
+                            <div>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  const newReviewItems = [...reviewItems];
+                                  newReviewItems[index] = {
+                                    ...newReviewItems[index],
+                                    image: file || null
+                                  };
+                                  setReviewItems(newReviewItems);
+                                }}
+                              />
+                            </div>
+
+                            <Button
+                              className="mt-2"
+                              disabled={isLoadingSubmitReview && productsSelectedToReview.includes(item.product_id)}
+                              onClick={() => {
+                                setProductsSelectedToReview([...productsSelectedToReview, item.product_id]);
+
+                                const submitReviewData: submitReviewData = {
+                                  user_id: user.id,
+                                  user_fullname: user.fullname,
+                                  order_id: selectedOrderToReview?.id || '',
+                                  product_id: item.product_id,
+                                  rating: reviewItems[index]?.rating,
+                                  comment: reviewItems[index]?.comment,
+                                  image: reviewItems[index]?.image
+                                }
+
+                                submitReview(submitReviewData);
+                              }}
+                            >
+                              Gửi đánh giá
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+                Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Review Dialog */}
+        <Dialog open={showEditReviewDialog} onOpenChange={setShowEditReviewDialog}>
+          <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa đánh giá</DialogTitle>
+              <DialogDescription>
+                Đơn hàng #{editingReview?.review?.id} - Đặt ngày {editingReview && new Date(editingReview.review.createdAt).toLocaleDateString('vi-VN')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {isLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          "h-6 w-6 cursor-pointer",
+                          star <= editingReview?.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                        )}
+                        onClick={() => {
+                          const updatedReview = {
+                            ...editingReview,
+                            rating: star
+                          };
+                          setEditingReview(updatedReview);
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <Textarea
+                    placeholder="Viết đánh giá của bạn..."
+                    value={editingReview?.comment}
+                    onChange={(e) => {
+                      const updatedReview = {
+                        ...editingReview,
+                        comment: e.target.value
+                      };
+                      setEditingReview(updatedReview);
+                    }}
+                  />
+
+                  <div>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        const updatedReview = {
+                          ...editingReview,
+                          image: file || null
+                        };
+                        setEditingReview(updatedReview);
+                      }}
+                    />
+                  </div>
+
+                  <Button
+                    className="mt-2"
+                    disabled={isLoadingSubmitReview && productsSelectedToReview.includes(editingReview?.review.product_id)}
+                    onClick={() => {
+                      setProductsSelectedToReview([...productsSelectedToReview, editingReview?.review.product_id]);
+
+                      submitEditReview();
+                    }}
+                  >
+                    Cập nhật đánh giá
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditReviewDialog(false)}>
+                Đóng
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2530,7 +3000,7 @@ const Profile = () => {
                   </Avatar>
                   <div>
                     <p className="font-medium">{userInfo.fullname}</p>
-                    <p className="text-sm text-gray-600">{userInfo.email}</p>
+                    {/* <p className="text-sm text-gray-600">{userInfo.email}</p> */}
                   </div>
                 </div>
               </CardHeader>
