@@ -198,7 +198,7 @@ interface Review {
   product_id: string;
   comment: string;
   rating: number;
-  url_image_related: string;
+  url_images_related: string[];
   createdAt: string;
   updatedAt: string;
   is_edited: boolean;
@@ -220,7 +220,7 @@ interface submitReviewData {
   product_id: string;
   rating: number;
   comment: string;
-  image: File | null;
+  images: File[];
 }
 
 const reasons_for_funded = [
@@ -485,7 +485,7 @@ const Profile = () => {
     product_id: string;
     rating: number;
     comment: string;
-    image: File | null;
+    images: File[];
   }[]>([]);
 
   const [orderReviews, setOrderReviews] = useState<Review[]>([]);
@@ -497,7 +497,7 @@ const Profile = () => {
     review: Review;
     rating: number;
     comment: string;
-    image: File | null;
+    images: File[];
   } | null>(null);
 
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -636,7 +636,6 @@ const Profile = () => {
     setIsLoading(true);
 
     try {
-      // Fetch order items and reviews in parallel
       const [itemsResponse, reviewsResponse] = await Promise.all([
         orderApi.get(`/orders/details/${order.id}`),
         productApi.get(`/reviews/order/${order.id}`)
@@ -645,12 +644,11 @@ const Profile = () => {
       if (itemsResponse.data.code === 0) {
         const orderItems = itemsResponse.data.data;
         setOrderItems(orderItems);
-        // Initialize review items for products that haven't been reviewed
         setReviewItems(orderItems.map(item => ({
           product_id: item.product_id,
           rating: 5,
           comment: '',
-          image: null
+          images: []
         })));
       }
 
@@ -672,7 +670,7 @@ const Profile = () => {
       review,
       rating: review.rating,
       comment: review.comment,
-      image: null
+      images: []
     });
     setShowEditReviewDialog(true);
   }
@@ -684,9 +682,9 @@ const Profile = () => {
     const formData = new FormData();
     formData.append('rating', editingReview.rating.toString());
     formData.append('comment', editingReview.comment);
-    if (editingReview.image) {
-      formData.append('image_related', editingReview.image);
-    }
+    editingReview.images.forEach((file, index) => {
+      formData.append('image_related', file);
+    });
 
     try {
       const response = await productApi.put(`/reviews/update/${editingReview.review.id}`, formData, {
@@ -697,7 +695,6 @@ const Profile = () => {
 
       if (response.data.code === 0) {
         const updatedReview = response.data.data;
-        // Update the review in orderReviews
         setOrderReviews(orderReviews.map(review => 
           review.id === updatedReview.id ? updatedReview : review
         ));
@@ -724,7 +721,9 @@ const Profile = () => {
     formData.append('order_id', submitReviewData.order_id);
     formData.append('rating', submitReviewData.rating.toString());
     formData.append('comment', submitReviewData.comment);
-    formData.append('image_related', submitReviewData.image || null);
+    submitReviewData.images.forEach((file) => {
+      formData.append('image_related', file);
+    });
 
     const params = {
       user_id: submitReviewData.user_id,
@@ -1272,12 +1271,17 @@ const Profile = () => {
                                   ))}
                                 </div>
                                 <p className="mt-2">{existingReview.comment}</p>
-                                {existingReview.url_image_related && (
-                                  <img
-                                    src={existingReview.url_image_related}
-                                    alt="Review image"
-                                    className="mt-2 w-24 h-24 object-cover rounded-lg"
-                                  />
+                                {existingReview.url_images_related && existingReview.url_images_related.length > 0 && (
+                                  <div className="mt-2 flex gap-2 flex-wrap">
+                                    {existingReview.url_images_related.map((url, index) => (
+                                      <img
+                                        key={index}
+                                        src={url}
+                                        alt={`Review image ${index + 1}`}
+                                        className="w-24 h-24 object-cover rounded-lg"
+                                      />
+                                    ))}
+                                  </div>
                                 )}
 
                                 {existingReview.response_review && (
@@ -1351,12 +1355,13 @@ const Profile = () => {
                               <Input
                                 type="file"
                                 accept="image/*"
+                                multiple
                                 onChange={(e) => {
-                                  const file = e.target.files?.[0];
+                                  const files = Array.from(e.target.files || []);
                                   const newReviewItems = [...reviewItems];
                                   newReviewItems[index] = {
                                     ...newReviewItems[index],
-                                    image: file || null
+                                    images: files
                                   };
                                   setReviewItems(newReviewItems);
                                 }}
@@ -1376,7 +1381,7 @@ const Profile = () => {
                                   product_id: item.product_id,
                                   rating: reviewItems[index]?.rating,
                                   comment: reviewItems[index]?.comment,
-                                  image: reviewItems[index]?.image
+                                  images: reviewItems[index]?.images || []
                                 }
 
                                 submitReview(submitReviewData);
@@ -1453,15 +1458,31 @@ const Profile = () => {
                     <Input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
+                        const files = Array.from(e.target.files || []);
                         const updatedReview = {
                           ...editingReview,
-                          image: file || null
+                          images: files
                         };
                         setEditingReview(updatedReview);
                       }}
                     />
+                    {editingReview?.review.url_images_related && editingReview.review.url_images_related.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-500 mb-1">Ảnh hiện tại:</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {editingReview.review.url_images_related.map((url, index) => (
+                            <img
+                              key={index}
+                              src={url}
+                              alt={`Current review image ${index + 1}`}
+                              className="w-24 h-24 object-cover rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Button

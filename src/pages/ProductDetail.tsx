@@ -50,7 +50,7 @@ interface Review {
   product_id: string;
   comment: string;
   rating: number;
-  url_image_related: string;
+  url_images_related: string[];
   createdAt: string;
   updatedAt: string;
   is_edited: boolean;
@@ -653,29 +653,35 @@ const ProductDetail = () => {
                             {new Date(review.updatedAt).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
-                        <p className="text-gray-600">{review.comment}</p>
-                        {review.url_image_related && (
-                          <img
-                            src={review.url_image_related}
-                            alt="Review related image"
-                            className="mt-2 w-24 h-24 object-cover rounded-md cursor-pointer"
-                            onClick={() => handleImageClick(review.url_image_related)}
-                          />
+                        <p className="mt-2">{review.comment}</p>
+                        {review.url_images_related && review.url_images_related.length > 0 && (
+                          <div className="mt-2 flex gap-2 flex-wrap">
+                            {review.url_images_related.map((url, index) => (
+                              <img
+                                key={index}
+                                src={url}
+                                alt={`Review image ${index + 1}`}
+                                className="w-24 h-24 object-cover rounded-lg cursor-pointer"
+                                onClick={() => handleImageClick(url)}
+                              />
+                            ))}
+                          </div>
                         )}
+
                         {review.response_review && (
-                          <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <span className="font-medium text-blue-600">Phản hồi từ {review.response_review.seller_name}</span>
-                              <span className="text-sm text-gray-500">
-                                {new Date(review.response_review.updatedAt).toLocaleDateString('vi-VN')}
-                              </span>
+                          <div className="mt-4 pl-4 border-l-2 border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{review.response_review.seller_name}</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(review.response_review.createdAt).toLocaleDateString('vi-VN')}
+                              </p>
                             </div>
-                            <p className="text-gray-600">{review.response_review.response_comment}</p>
+                            <p className="mt-1">{review.response_review.response_comment}</p>
                             {review.response_review.url_image_related && (
                               <img
                                 src={review.response_review.url_image_related}
-                                alt="Response related image"
-                                className="mt-2 w-24 h-24 object-cover rounded-md cursor-pointer"
+                                alt="Response image"
+                                className="mt-2 w-24 h-24 object-cover rounded-lg cursor-pointer"
                                 onClick={() => handleImageClick(review.response_review.url_image_related)}
                               />
                             )}
@@ -683,11 +689,6 @@ const ProductDetail = () => {
                         )}
                       </div>
                     </div>
-                    {/* {isLoggedIn && user.id === review.user_id && (
-                      <Button variant="ghost" size="icon" onClick={() => confirmRemoveReview(review.id)}>
-                        <Trash className="w-4 h-4" />
-                      </Button>
-                    )} */}
                   </div>
                 ))}
               </div> : <div className="space-y-4">
@@ -754,7 +755,7 @@ const ProductDetail = () => {
                 <DialogTitle>Xem ảnh</DialogTitle>
               </DialogHeader>
               <div className="flex justify-center items-center">
-                <img src={currentImageUrl} alt="Full size image" className="max-w-full h-auto" />
+                <img src={currentImageUrl} alt="Full size image" className="max-w-full max-h-96" />
               </div>
               <DialogFooter>
                 <Button onClick={() => setShowImageDialog(false)}>Đóng</Button>
