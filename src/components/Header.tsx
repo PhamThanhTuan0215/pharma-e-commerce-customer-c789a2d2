@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package, BookOpen, CreditCard } from 'lucide-react';
+import { Search, ShoppingCart, Heart, User, Bell, Menu, Gift, Package, BookOpen, CreditCard, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,9 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
     // nếu hiện tại đang ở trang chủ thì reload lại chính nó để làm mới dữ liệu
     if (window.location.pathname === '/') {
       window.location.reload();
+    }
+    else {
+      navigate('/');
     }
   };
 
@@ -115,8 +118,8 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
 
             <Link to='/products'>
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
-                <Package className="w-5 h-5" />
-                <span className="hidden md:inline ml-1">Sản phẩm</span>
+                <ShoppingBag className="w-5 h-5" />
+                <span className="hidden md:inline ml-1">Mua sắm</span>
               </Button>
             </Link>
 

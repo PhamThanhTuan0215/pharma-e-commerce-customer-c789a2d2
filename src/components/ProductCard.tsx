@@ -53,7 +53,7 @@ const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: P
       <div className="relative aspect-square overflow-hidden">
         {/* hiển thị promotion_value_percent ở gốc trái tấm ảnh, chỉ bo tròn góc chứ không bo tròn toàn bộ */}
         {product.promotion_value_percent !== 0 && <div className="absolute top-2 left-2 bg-medical-red text-white px-4 py-1 rounded-br-full text-lg z-[5]">
-          {product.promotion_value_percent}%
+          {product.promotion_value_percent.toFixed(0)}%
         </div>}
         <img
           src={product.url_image || "/default-product.png"}

@@ -327,6 +327,28 @@ const Products = () => {
     setAdvancedFilter({ name: "", brand: "", product_type_name: "", category_name: "" });
   }
 
+  const handleResetFilter = () => {
+    setFilters({
+      ...filters,
+      product_type_name: null,
+      category_name: null,
+      brand: null,
+      name: null,
+      sort_price: null,
+      page: 1
+    });
+
+    setCurrentPage(1);
+    setIsSidebarOpen(false);
+    setIsAdvancedFilterOpen(false);
+    setAdvancedFilter({
+      name: "",
+      brand: "",
+      product_type_name: "",
+      category_name: ""
+    });
+  }
+
   useEffect(() => {
     fetchProducts();
     fetchProductIdsInWishlist();
@@ -364,6 +386,7 @@ const Products = () => {
           onSelectCategory={handleCategorySelect}
           onSelectBrand={handleBrandSelect}
           onSelectProductType={handleProductTypeSelect}
+          onResetFilter={handleResetFilter}
         />
 
         <main className="flex-1 p-4">
