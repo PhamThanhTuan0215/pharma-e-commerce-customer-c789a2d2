@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus } from 'lucide-react';
+import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -118,6 +118,7 @@ interface OrderReturnRequest {
   customer_message: string;
   request_at: string;
   response_message: string | null;
+  url_images_related: string[];
   response_at: string | null;
   status: string;
   customer_shipping_address_id: string;
@@ -186,7 +187,8 @@ interface RefundOrderInfo {
     id: string;
     product_id: string;
     product_quantity: number;
-  }[]
+  }[];
+  url_images_related: (string | File)[] | null;
 }
 
 interface Review {
@@ -476,7 +478,8 @@ const Profile = () => {
     reason: '',
     customer_message: '',
     customer_shipping_address_id: '',
-    items: []
+    items: [],
+    url_images_related: null
   });
 
   const [showReviewDialog, setShowReviewDialog] = useState(false);
@@ -499,6 +502,9 @@ const Profile = () => {
     comment: string;
     images: File[];
   } | null>(null);
+
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
@@ -695,7 +701,7 @@ const Profile = () => {
 
       if (response.data.code === 0) {
         const updatedReview = response.data.data;
-        setOrderReviews(orderReviews.map(review => 
+        setOrderReviews(orderReviews.map(review =>
           review.id === updatedReview.id ? updatedReview : review
         ));
 
@@ -1169,6 +1175,62 @@ const Profile = () => {
                 />
               </div>
 
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label>Hình ảnh liên quan</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {refundOrderInfo.url_images_related?.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={typeof image === 'string' ? image : URL.createObjectURL(image)}
+                        alt={`Ảnh ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                        onClick={() => {
+                          setSelectedImage(typeof image === 'string' ? image : URL.createObjectURL(image));
+                          setShowImageDialog(true);
+                        }}
+                      />
+                      <button
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => {
+                          setRefundOrderInfo(prev => ({
+                            ...prev,
+                            url_images_related: prev.url_images_related?.filter((_, i) => i !== index) || null
+                          }));
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {(!refundOrderInfo.url_images_related || refundOrderInfo.url_images_related.length < 10) && (
+                    <div
+                      className="w-full h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+                      onClick={() => document.getElementById('refund-image-upload')?.click()}
+                    >
+                      <Plus className="w-6 h-6 text-gray-400" />
+                      <input
+                        id="refund-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setRefundOrderInfo(prev => ({
+                              ...prev,
+                              url_images_related: [...(prev.url_images_related || []), file] as (string | File)[]
+                            }));
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">Tối đa 10 ảnh. Nhấn vào ảnh để xem chi tiết.</p>
+              </div>
+
               {/* Address Selection */}
               <div className="space-y-2">
                 <Label>Địa chỉ lấy hàng hoàn trả</Label>
@@ -1278,7 +1340,11 @@ const Profile = () => {
                                         key={index}
                                         src={url}
                                         alt={`Review image ${index + 1}`}
-                                        className="w-24 h-24 object-cover rounded-lg"
+                                        className="w-24 h-24 object-cover rounded-lg cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedImage(url);
+                                          setShowImageDialog(true);
+                                        }}
                                       />
                                     ))}
                                   </div>
@@ -1287,7 +1353,7 @@ const Profile = () => {
                                 {existingReview.response_review && (
                                   <div className="mt-4 pl-4 border-l-2 border-gray-200">
                                     <div className="flex items-center gap-2">
-                                      <p className="font-medium">{existingReview.response_review.seller_name}</p>
+                                      <p className="font-medium text-medical-blue">Phản hồi từ {existingReview.response_review.seller_name}</p>
                                       <p className="text-sm text-gray-500">
                                         {new Date(existingReview.response_review.createdAt).toLocaleDateString('vi-VN')}
                                       </p>
@@ -1351,21 +1417,63 @@ const Profile = () => {
                               }}
                             />
 
-                            <div>
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) => {
-                                  const files = Array.from(e.target.files || []);
-                                  const newReviewItems = [...reviewItems];
-                                  newReviewItems[index] = {
-                                    ...newReviewItems[index],
-                                    images: files
-                                  };
-                                  setReviewItems(newReviewItems);
-                                }}
-                              />
+                            <div className="space-y-2">
+                              <Label>Hình ảnh liên quan</Label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {reviewItems[index]?.images.map((image, imageIndex) => (
+                                  <div key={imageIndex} className="relative group">
+                                    <img
+                                      src={URL.createObjectURL(image)}
+                                      alt={`Ảnh ${imageIndex + 1}`}
+                                      className="w-full h-24 object-cover rounded-lg"
+                                      onClick={() => {
+                                        setSelectedImage(URL.createObjectURL(image));
+                                        setShowImageDialog(true);
+                                      }}
+                                    />
+                                    <button
+                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => {
+                                        const newReviewItems = [...reviewItems];
+                                        newReviewItems[index] = {
+                                          ...newReviewItems[index],
+                                          images: newReviewItems[index].images.filter((_, i) => i !== imageIndex)
+                                        };
+                                        setReviewItems(newReviewItems);
+                                      }}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {(!reviewItems[index]?.images || reviewItems[index]?.images.length < 10) && (
+                                  <div
+                                    className="w-full h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+                                    onClick={() => document.getElementById(`review-image-upload-${index}`)?.click()}
+                                  >
+                                    <Plus className="w-6 h-6 text-gray-400" />
+                                    <input
+                                      id={`review-image-upload-${index}`}
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const newReviewItems = [...reviewItems];
+                                          newReviewItems[index] = {
+                                            ...newReviewItems[index],
+                                            images: [...(newReviewItems[index].images || []), file]
+                                          };
+                                          setReviewItems(newReviewItems);
+                                        }
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500">Tối đa 10 ảnh. Nhấn vào ảnh để xem chi tiết.</p>
                             </div>
 
                             <Button
@@ -1412,16 +1520,12 @@ const Profile = () => {
             <DialogHeader>
               <DialogTitle>Chỉnh sửa đánh giá</DialogTitle>
               <DialogDescription>
-                Đơn hàng #{editingReview?.review?.id} - Đặt ngày {editingReview && new Date(editingReview.review.createdAt).toLocaleDateString('vi-VN')}
+                Đơn hàng #{editingReview?.review?.order_id} - Đặt ngày {editingReview && new Date(editingReview.review.createdAt).toLocaleDateString('vi-VN')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-full">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-              ) : (
+              {editingReview && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -1429,14 +1533,13 @@ const Profile = () => {
                         key={star}
                         className={cn(
                           "h-6 w-6 cursor-pointer",
-                          star <= editingReview?.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                          star <= editingReview.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
                         )}
                         onClick={() => {
-                          const updatedReview = {
+                          setEditingReview({
                             ...editingReview,
                             rating: star
-                          };
-                          setEditingReview(updatedReview);
+                          });
                         }}
                       />
                     ))}
@@ -1444,40 +1547,83 @@ const Profile = () => {
 
                   <Textarea
                     placeholder="Viết đánh giá của bạn..."
-                    value={editingReview?.comment}
+                    value={editingReview.comment}
                     onChange={(e) => {
-                      const updatedReview = {
+                      setEditingReview({
                         ...editingReview,
                         comment: e.target.value
-                      };
-                      setEditingReview(updatedReview);
+                      });
                     }}
                   />
 
-                  <div>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        const updatedReview = {
-                          ...editingReview,
-                          images: files
-                        };
-                        setEditingReview(updatedReview);
-                      }}
-                    />
-                    {editingReview?.review.url_images_related && editingReview.review.url_images_related.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-500 mb-1">Ảnh hiện tại:</p>
-                        <div className="flex gap-2 flex-wrap">
+                  <div className="space-y-2">
+                    <Label>Hình ảnh liên quan</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {editingReview.images.map((image, imageIndex) => (
+                        <div key={imageIndex} className="relative group">
+                          <img
+                            src={URL.createObjectURL(image)}
+                            alt={`Ảnh mới ${imageIndex + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                            onClick={() => {
+                              setSelectedImage(URL.createObjectURL(image));
+                              setShowImageDialog(true);
+                            }}
+                          />
+                          <button
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setEditingReview({
+                                ...editingReview,
+                                images: editingReview.images.filter((_, i) => i !== imageIndex)
+                              });
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {(!editingReview.images || editingReview.images.length < 10) && (
+                        <div
+                          className="w-full h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+                          onClick={() => document.getElementById('edit-review-image-upload')?.click()}
+                        >
+                          <Plus className="w-6 h-6 text-gray-400" />
+                          <input
+                            id="edit-review-image-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setEditingReview({
+                                  ...editingReview,
+                                  images: [...editingReview.images, file]
+                                });
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">Tối đa 10 ảnh. Nhấn vào ảnh để xem chi tiết.</p>
+
+                    {editingReview.review.url_images_related && editingReview.review.url_images_related.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-500 mb-2">Ảnh hiện tại:</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {editingReview.review.url_images_related.map((url, index) => (
                             <img
                               key={index}
                               src={url}
-                              alt={`Current review image ${index + 1}`}
-                              className="w-24 h-24 object-cover rounded-lg"
+                              alt={`Ảnh hiện tại ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg cursor-pointer"
+                              onClick={() => {
+                                setSelectedImage(url);
+                                setShowImageDialog(true);
+                              }}
                             />
                           ))}
                         </div>
@@ -1486,25 +1632,22 @@ const Profile = () => {
                   </div>
 
                   <Button
-                    className="mt-2"
-                    disabled={isLoadingSubmitReview && productsSelectedToReview.includes(editingReview?.review.product_id)}
-                    onClick={() => {
-                      setProductsSelectedToReview([...productsSelectedToReview, editingReview?.review.product_id]);
-
-                      submitEditReview();
-                    }}
+                    className="w-full"
+                    disabled={isLoadingSubmitReview}
+                    onClick={submitEditReview}
                   >
-                    Cập nhật đánh giá
+                    {isLoadingSubmitReview ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang cập nhật...
+                      </span>
+                    ) : (
+                      'Cập nhật đánh giá'
+                    )}
                   </Button>
                 </div>
               )}
             </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditReviewDialog(false)}>
-                Đóng
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </CardContent>
@@ -1670,29 +1813,59 @@ const Profile = () => {
 
               <div className="space-y-6">
                 {/* Request Status */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-gray-600">Trạng thái yêu cầu</p>
-                      <Badge className={getReturnRequestStatusColor(selectedReturnRequest?.status)}>
-                        {getReturnRequestStatusText(selectedReturnRequest?.status)}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Đơn hàng gốc</p>
-                      <p className="font-medium">#{selectedReturnRequest?.order_id}</p>
-                    </div>
-                  </div>
+                <div className="bg-gray-50 rounded-lg">
+                  <Badge className={getReturnRequestStatusColor(selectedReturnRequest?.status)}>
+                    {getReturnRequestStatusText(selectedReturnRequest?.status)}
+                  </Badge>
                 </div>
 
-                {/* Request Items */}
+                {/* Request Details */}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Lý do hoàn trả:</span> {selectedReturnRequest?.reason}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Phí vận chuyển:</span> {selectedReturnRequest?.return_shipping_fee_paid_by === 'seller' ? 'Nhà bán thanh toán' : 'Người mua thanh toán'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Ghi chú:</span> {selectedReturnRequest?.customer_message}
+                  </p>
+                  {selectedReturnRequest?.response_message && (
+                    <p className={`text-sm ${selectedReturnRequest.status === 'accepted' ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="font-medium">Trả lời từ nhà bán:</span> {selectedReturnRequest.response_message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Related Images */}
+                {selectedReturnRequest?.url_images_related && selectedReturnRequest.url_images_related.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Hình ảnh liên quan</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {selectedReturnRequest.url_images_related.map((image, index) => (
+                        <img
+                          key={index}
+                          src={image}
+                          alt={`Ảnh ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg cursor-pointer"
+                          onClick={() => {
+                            setSelectedImage(image);
+                            setShowImageDialog(true);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Items */}
                 {isLoading ? (
                   <div className="flex justify-center items-center h-full">
                     <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h4 className="font-medium">Sản phẩm yêu cầu hoàn trả</h4>
+                    <h4 className="font-medium">Sản phẩm hoàn trả</h4>
                     {orderReturnRequestItems.map((item) => (
                       <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
                         <img
@@ -2722,7 +2895,8 @@ const Profile = () => {
       reason: '',
       customer_message: '',
       customer_shipping_address_id: '',
-      items: []
+      items: [],
+      url_images_related: null
     });
     setShowRefundOrderDialog(true);
 
@@ -2745,9 +2919,28 @@ const Profile = () => {
   }
 
   const refundOrder = (refundOrderInfo: RefundOrderInfo) => {
-
     setIsLoading(true);
-    orderApi.post(`/order-returns/request/${refundOrderInfo.order_id}`, refundOrderInfo)
+
+    const formData = new FormData();
+    formData.append('order_id', refundOrderInfo.order_id);
+    formData.append('reason', refundOrderInfo.reason);
+    formData.append('customer_message', refundOrderInfo.customer_message);
+    formData.append('customer_shipping_address_id', refundOrderInfo.customer_shipping_address_id);
+    formData.append('items', JSON.stringify(refundOrderInfo.items));
+
+    if (refundOrderInfo.url_images_related) {
+      refundOrderInfo.url_images_related.forEach((image) => {
+        if (image && typeof image !== 'string') {
+          formData.append('image_related', image);
+        }
+      });
+    }
+
+    orderApi.post(`/order-returns/request/${refundOrderInfo.order_id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
       .then((response) => {
         if (response.data.code === 0) {
           setShowRefundOrderDialog(false);
@@ -2756,7 +2949,8 @@ const Profile = () => {
             reason: '',
             customer_message: '',
             customer_shipping_address_id: '',
-            items: []
+            items: [],
+            url_images_related: null
           });
 
           toast({
@@ -2774,7 +2968,8 @@ const Profile = () => {
           variant: 'error',
           description: error.response.data.message || error.message,
         });
-
+      })
+      .finally(() => {
         setIsLoading(false);
       });
   }
@@ -3059,6 +3254,19 @@ const Profile = () => {
             </div> : renderContent()}
           </div>
         </div>
+
+        {/* Image Dialog */}
+        <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+          <DialogContent className="sm:max-w-[800px] p-0">
+            {selectedImage && (
+              <img
+                src={selectedImage}
+                alt="Chi tiết ảnh"
+                className="w-full h-auto"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

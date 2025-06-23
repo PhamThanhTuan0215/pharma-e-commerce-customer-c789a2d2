@@ -671,7 +671,7 @@ const ProductDetail = () => {
                         {review.response_review && (
                           <div className="mt-4 pl-4 border-l-2 border-gray-200">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{review.response_review.seller_name}</p>
+                              <p className="font-medium text-medical-blue">Phản hồi từ {review.response_review.seller_name}</p>
                               <p className="text-sm text-gray-500">
                                 {new Date(review.response_review.createdAt).toLocaleDateString('vi-VN')}
                               </p>
