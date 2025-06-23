@@ -55,7 +55,12 @@ interface Product {
     seller_name: string;
     product_details: {
       [key: string]: string;
-    }
+    };
+    promotion_name: string;
+    promotion_value_percent: number;
+    promotion_start_date: string;
+    promotion_end_date: string;
+    actual_price: number;
   }
 
 const Store = () => {

@@ -3489,11 +3489,19 @@ const Profile = () => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-medical-blue" />
-                    <span className="font-medium text-medical-blue">
-                      {orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
+                    <Package className="w-5 h-5 text-medical-red" />
+                    <span className="font-medium text-medical-red">
+                      {orderShipment?.current_status === SHIPPING_STATUS.IN_WAREHOUSE ? 'Đang trong kho' :
+                       orderShipment?.current_status === SHIPPING_STATUS.PICKUP_FAILED ? 'Lấy hàng thất bại' :
+                       orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? 'Ngoài giờ giao hàng' :
+                       orderShipment?.current_status === SHIPPING_STATUS.DELIVERY_FAILED ? 'Giao hàng thất bại' :
+                      orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
                        orderShipment?.current_status === SHIPPING_STATUS.RETURNED ? 'Đã hoàn trả' :
                        orderShipment?.current_status === SHIPPING_STATUS.CANCELLED ? 'Đã hủy' :
+                       orderShipment?.current_status === SHIPPING_STATUS.LOST ? 'Mất hàng' :
+                       orderShipment?.current_status === SHIPPING_STATUS.DAMAGED ? 'Hàng bị hỏng' :
+                       orderShipment?.current_status === SHIPPING_STATUS.ON_HOLD ? 'Đang chờ' :
+
                        'Đang xử lý'}
                     </span>
                   </div>
