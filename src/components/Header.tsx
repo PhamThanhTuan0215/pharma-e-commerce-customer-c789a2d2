@@ -39,15 +39,27 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
           </div>
           <div className="flex items-center space-x-4">
             <Bell className="w-4 h-4" />
-            <Link to="#">Thông báo</Link>
-            <Link to="#">Hỗ trợ</Link>
+            <Link onClick={() => {
+              // cuộn lên đầu trang
+              window.scrollTo(0, 0);
+            }} to="#">Thông báo</Link>
+            <Link onClick={() => {
+              // cuộn lên đầu trang
+              window.scrollTo(0, 0);
+            }} to="#">Hỗ trợ</Link>
             {isLoggedIn ? (
-              <Link to="/profile" className="flex items-center space-x-2">
+              <Link onClick={() => {
+                // cuộn lên đầu trang
+                window.scrollTo(0, 0);
+              }} to="/profile" className="flex items-center space-x-2">
                 <User className="w-4 h-4" />
                 <span>{user.fullname}</span>
               </Link>
             ) : (
-              <Link to="/login">Đăng nhập</Link>
+              <Link onClick={() => {
+                // cuộn lên đầu trang
+                window.scrollTo(0, 0);
+              }} to="/login">Đăng nhập</Link>
             )}
           </div>
         </div>
@@ -116,35 +128,46 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
           {/* Action buttons */}
           <div className="flex items-center space-x-2 w-full lg:w-auto justify-center lg:justify-end">
 
-            <Link to='/products'>
+            <Link onClick={() => {
+              // cuộn lên đầu trang
+              window.scrollTo(0, 0);
+            }} to='/products'>
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <ShoppingBag className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Mua sắm</span>
               </Button>
             </Link>
 
-            <Link to='/voucher'>
+            <Link onClick={() => {
+              window.scrollTo(0, 0);
+            }} to='/voucher'>
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <Gift className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Voucher</span>
               </Button>
             </Link>
 
-            <Link to="/wishlist">
+            <Link onClick={() => {
+              window.scrollTo(0, 0);
+            }} to="/wishlist">
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <Heart className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Yêu thích</span>
               </Button>
             </Link>
 
-            <Link to="/cart">
+            <Link onClick={() => {
+              window.scrollTo(0, 0);
+            }} to="/cart">
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <ShoppingCart className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Giỏ hàng</span>
               </Button>
             </Link>
 
-            <Link to="/checkout">
+            <Link onClick={() => {
+              window.scrollTo(0, 0);
+            }} to="/checkout">
               <Button variant="ghost" size="sm" className="relative text-white hover:bg-primary-500">
                 <CreditCard className="w-5 h-5" />
                 <span className="hidden md:inline ml-1">Thanh toán</span>

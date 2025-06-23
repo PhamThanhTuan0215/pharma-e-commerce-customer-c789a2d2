@@ -93,7 +93,7 @@ interface Store {
 // ];
 
 const Cart = () => {
-  const [cartData, setCartData] = useState([]);
+  const [cartData, setCartData] = useState<Store[]>([]);
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -124,7 +124,6 @@ const Cart = () => {
   };
 
   const increaseQuantity = (item: CartItem) => {
-
     const payload = {
       user_id: user.id,
       product_id: item.product_id,
@@ -139,16 +138,30 @@ const Cart = () => {
     customerApi.post(`/carts/add`, payload)
       .then((response) => {
         if (response.data.code === 0) {
-
-          const cartItem = response.data.data;
-          // cập nhật lại cartData
-          setCartData(prev =>
-            prev.map(store =>
-              store.seller_id === cartItem.seller_id
-                ? { ...store, total_quantity: store.total_quantity + 1, products: store.products.map(item => item.id === cartItem.id ? { ...item, quantity: item.quantity + 1 } : item) }
-                : store
-            )
-          );
+          // Update the cart data with the new item quantity
+          setCartData(prev => {
+            return prev.map(store => {
+              if (store.seller_id === item.seller_id) {
+                // Update store total quantity
+                const updatedStore = {
+                  ...store,
+                  total_quantity: store.total_quantity + 1,
+                  products: store.products.map(product => {
+                    if (product.id === item.id) {
+                      // Update the product quantity
+                      return {
+                        ...product,
+                        quantity: product.quantity + 1
+                      };
+                    }
+                    return product;
+                  })
+                };
+                return updatedStore;
+              }
+              return store;
+            });
+          });
 
           console.log(response.data.message);
         }
@@ -156,13 +169,12 @@ const Cart = () => {
       .catch((error) => {
         toast({
           variant: 'error',
-          description: error.response.data.message || error.message,
+          description: error.response?.data?.message || error.message,
         });
       });
   };
 
   const decreaseQuantity = (item: CartItem) => {
-
     if (item.quantity <= 1) {
       return;
     }
@@ -170,16 +182,30 @@ const Cart = () => {
     customerApi.delete(`/carts/reduce/${item.id}`)
       .then((response) => {
         if (response.data.code === 0) {
-
-          const cartItem = response.data.data;
-
-          setCartData(prev =>
-            prev.map(store =>
-              store.seller_id === cartItem.seller_id
-                ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.map(item => item.id === cartItem.id ? { ...item, quantity: item.quantity - 1 } : item) }
-                : store
-            )
-          );
+          // Update the cart data with the reduced quantity
+          setCartData(prev => {
+            return prev.map(store => {
+              if (store.seller_id === item.seller_id) {
+                // Update store total quantity
+                const updatedStore = {
+                  ...store,
+                  total_quantity: store.total_quantity - 1,
+                  products: store.products.map(product => {
+                    if (product.id === item.id) {
+                      // Update the product quantity
+                      return {
+                        ...product,
+                        quantity: product.quantity - 1
+                      };
+                    }
+                    return product;
+                  })
+                };
+                return updatedStore;
+              }
+              return store;
+            });
+          });
 
           console.log(response.data.message);
         }
@@ -187,7 +213,7 @@ const Cart = () => {
       .catch((error) => {
         toast({
           variant: 'error',
-          description: error.response.data.message || error.message,
+          description: error.response?.data?.message || error.message,
         });
       });
   }
@@ -223,20 +249,26 @@ const Cart = () => {
   };
 
   const removeItem = (item: CartItem) => {
-
     customerApi.delete(`/carts/remove/${item.id}`)
       .then((response) => {
         if (response.data.code === 0) {
-
-          const cartItem = response.data.data;
-
-          setCartData(prev =>
-            prev.map(store =>
-              store.seller_id === cartItem.seller_id
-                ? { ...store, total_quantity: store.total_quantity - 1, products: store.products.filter(item => item.id !== cartItem.id) }
-                : store
-            ).filter(store => store.products.length > 0)
-          );
+          // Update the cart data by removing the item
+          setCartData(prev => {
+            // First, filter out the item from its store
+            const updatedStores = prev.map(store => {
+              if (store.seller_id === item.seller_id) {
+                return {
+                  ...store,
+                  total_quantity: store.total_quantity - item.quantity,
+                  products: store.products.filter(product => product.id !== item.id)
+                };
+              }
+              return store;
+            });
+            
+            // Then, remove any stores that no longer have products
+            return updatedStores.filter(store => store.products.length > 0);
+          });
 
           console.log(response.data.message);
         }
@@ -244,23 +276,23 @@ const Cart = () => {
       .catch((error) => {
         toast({
           variant: 'error',
-          description: error.response.data.message || error.message,
+          description: error.response?.data?.message || error.message,
         });
       });
   };
 
-  const getStoreTotal = (store: any) => {
+  const getStoreTotal = (store: Store) => {
     return store.products
-      .filter((item: any) => item.selected)
-      .reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
+      .filter((item: CartItem) => item.selected)
+      .reduce((total: number, item: CartItem) => total + (Number(item.price) * item.quantity), 0);
   };
 
   const getGrandTotal = () => {
     return cartData.reduce((total, store) => total + getStoreTotal(store), 0);
   };
 
-  const getStoreQuantity = (store: any) => {
-    return store.products.reduce((total: number, item: any) => total + item.quantity, 0);
+  const getStoreQuantity = (store: Store) => {
+    return store.products.reduce((total: number, item: CartItem) => total + item.quantity, 0);
   };
 
   const getTotalQuantity = () => {
@@ -268,7 +300,7 @@ const Cart = () => {
   };
 
   const isOutOfStock = () => {
-    return cartData.some((store: any) => store.products.some((item: any) => item.stock === 0));
+    return cartData.some((store: Store) => store.products.some((item: CartItem) => item.stock === 0));
   };
 
   const getSelectedItemsCount = () => {
@@ -277,12 +309,11 @@ const Cart = () => {
     );
   };
 
-  const handleClickProduct = (item: any) => {
+  const handleClickProduct = (item: CartItem) => {
     navigate(`/products/${item.product_id}`);
   };
 
   const fetchCartData = async () => {
-
     if (!isLoggedIn) return;
 
     setIsLoading(true);
@@ -295,8 +326,8 @@ const Cart = () => {
         if (response.data.code === 0) {
           const cartData = response.data.data;
           // thêm tự động selected = true cho tất cả các sản phẩm
-          cartData.forEach((store: any) => {
-            store.products.forEach((item: any) => {
+          cartData.forEach((store: Store) => {
+            store.products.forEach((item: CartItem) => {
               item.selected = true;
             });
           });
@@ -306,7 +337,7 @@ const Cart = () => {
       .catch((error) => {
         toast({
           variant: 'error',
-          description: error.response.data.message || error.message,
+          description: error.response?.data?.message || error.message,
         });
       })
       .finally(() => {
@@ -319,7 +350,6 @@ const Cart = () => {
   }, []);
 
   if (isLoading) {
-
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />

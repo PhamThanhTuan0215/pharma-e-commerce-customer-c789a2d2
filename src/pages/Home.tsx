@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import productApi from '@/services/api-product-service';
 import customerApi from '@/services/api-customer-service';
@@ -57,7 +57,8 @@ const Home = () => {
     const [promotions, setPromotions] = useState<Promotion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
-    const ITEMS_PER_PAGE = 5;
+    const ITEMS_PER_PAGE = 1;
+    const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
     const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
     const [catalogProductsLoading, setCatalogProductsLoading] = useState(false);
@@ -329,6 +330,32 @@ const Home = () => {
         navigate(`/products/${productId}`);
     };
 
+    // Calculate countdown to end of current day
+    const calculateTimeLeft = () => {
+        const now = new Date();
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const difference = endOfDay.getTime() - now.getTime();
+        
+        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((difference / (1000 * 60)) % 60);
+        const seconds = Math.floor((difference / 1000) % 60);
+        
+        setCountdown({ hours, minutes, seconds });
+    };
+
+    // Update countdown every second
+    useEffect(() => {
+        const timer = setInterval(() => {
+            calculateTimeLeft();
+        }, 1000);
+
+        calculateTimeLeft(); // Initial calculation
+        
+        return () => clearInterval(timer);
+    }, []);
+
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             fetchCatalogProducts(true);
@@ -374,33 +401,71 @@ const Home = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 min-w-[200px]">
-                                                <div className="text-white/80 text-sm font-medium mb-2">
-                                                    Thời gian diễn ra
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center text-white">
-                                                        <span className="text-white/60 text-sm mr-2">Từ:</span>
-                                                        <span className="font-medium">
-                                                            {new Date(promotion.earliest_start_date).toLocaleDateString('vi-VN', {
-                                                                year: 'numeric',
-                                                                month: '2-digit',
-                                                                day: '2-digit'
-                                                            })}
+                                            {promotion.name === 'flash sale' ? (
+                                                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 min-w-[240px]">
+                                                    <div className="flex items-center text-white mb-2">
+                                                        <Clock className="w-4 h-4 mr-2 text-white/80" />
+                                                        <span className="text-white/80 text-sm font-medium">
+                                                            Kết thúc trong
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center text-white">
-                                                        <span className="text-white/60 text-sm mr-2">Đến:</span>
-                                                        <span className="font-medium">
-                                                            {new Date(promotion.latest_end_date).toLocaleDateString('vi-VN', {
-                                                                year: 'numeric',
-                                                                month: '2-digit',
-                                                                day: '2-digit'
-                                                            })}
+                                                    <div className="flex justify-center gap-2 my-1">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="bg-white text-indigo-600 font-bold text-xl w-12 h-12 rounded-lg flex items-center justify-center shadow-lg">
+                                                                {String(countdown.hours).padStart(2, '0')}
+                                                            </div>
+                                                            <span className="text-white/80 text-xs mt-1">Giờ</span>
+                                                        </div>
+                                                        <div className="text-white font-bold text-xl flex items-center">:</div>
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="bg-white text-indigo-600 font-bold text-xl w-12 h-12 rounded-lg flex items-center justify-center shadow-lg">
+                                                                {String(countdown.minutes).padStart(2, '0')}
+                                                            </div>
+                                                            <span className="text-white/80 text-xs mt-1">Phút</span>
+                                                        </div>
+                                                        <div className="text-white font-bold text-xl flex items-center">:</div>
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="bg-white text-indigo-600 font-bold text-xl w-12 h-12 rounded-lg flex items-center justify-center shadow-lg animate-pulse">
+                                                                {String(countdown.seconds).padStart(2, '0')}
+                                                            </div>
+                                                            <span className="text-white/80 text-xs mt-1">Giây</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-center mt-2">
+                                                        <span className="inline-block px-3 py-1 bg-yellow-500 text-white text-xs font-medium rounded-full animate-bounce">
+                                                            Hãy nhanh tay!
                                                         </span>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 min-w-[200px]">
+                                                    <div className="text-white/80 text-sm font-medium mb-2">
+                                                        Thời gian diễn ra
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center text-white">
+                                                            <span className="text-white/60 text-sm mr-2">Từ:</span>
+                                                            <span className="font-medium">
+                                                                {new Date(promotion.earliest_start_date).toLocaleDateString('vi-VN', {
+                                                                    year: 'numeric',
+                                                                    month: '2-digit',
+                                                                    day: '2-digit'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center text-white">
+                                                            <span className="text-white/60 text-sm mr-2">Đến:</span>
+                                                            <span className="font-medium">
+                                                                {new Date(promotion.latest_end_date).toLocaleDateString('vi-VN', {
+                                                                    year: 'numeric',
+                                                                    month: '2-digit',
+                                                                    day: '2-digit'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

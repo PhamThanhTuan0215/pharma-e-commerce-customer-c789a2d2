@@ -225,6 +225,90 @@ interface submitReviewData {
   images: File[];
 }
 
+// SHIPPING_STATUS trạng thái đơn hàng
+const SHIPPING_STATUS = {
+  WAITING_FOR_PICKUP: 'WAITING_FOR_PICKUP',
+  PICKUP_FAILED: 'PICKUP_FAILED',
+  PICKED_UP: 'PICKED_UP',
+  IN_WAREHOUSE: 'IN_WAREHOUSE',
+  IN_TRANSIT: 'IN_TRANSIT',
+  OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+  DELIVERED: 'DELIVERED',
+  DELIVERY_FAILED: 'DELIVERY_FAILED',
+  RETURNING: 'RETURNING',
+  RETURNED: 'RETURNED',
+  CANCELLED: 'CANCELLED',
+  LOST: 'LOST',
+  DAMAGED: 'DAMAGED',
+  ON_HOLD: 'ON_HOLD',
+};
+
+// CHECKPOINT_STATUS trạng thái quét mã
+const CHECKPOINT_STATUS = {
+  PICKUP_SUCCESS: 'PICKUP_SUCCESS',
+  PICKUP_FAILED: 'PICKUP_FAILED',
+  ARRIVAL_WAREHOUSE: 'ARRIVAL_WAREHOUSE',
+  DEPARTURE_WAREHOUSE: 'DEPARTURE_WAREHOUSE',
+  IN_TRANSIT: 'IN_TRANSIT',
+  OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+  DELIVERED_SUCCESS: 'DELIVERED_SUCCESS',
+  DELIVERED_FAILED: 'DELIVERED_FAILED',
+  RETURN_TO_SENDER: 'RETURN_TO_SENDER',
+};
+
+interface ShipmentProgress {
+  location: string;
+  status: string;
+  note: string;
+  timestamp: string;
+}
+
+interface OrderShipment {
+  id: string;
+  order_id: string;
+  tracking_number: string;
+  shipping_provider_id: string;
+  shipping_address_from_id: string;
+  shipping_address_to_id: string;
+  current_status: string;
+  progress: ShipmentProgress[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// mock data of order shipment
+const orderShipmentMock: OrderShipment = {
+  id: "1",
+  order_id: "1",
+  tracking_number: "SH202506171138416686",
+  shipping_provider_id: "1",
+  shipping_address_from_id: "1",
+  shipping_address_to_id: "2",
+  current_status: "IN_TRANSIT",
+  progress: [
+      {
+          location: "Kho Nha Trang",
+          status: "ARRIVAL_WAREHOUSE",
+          note: "Đơn hàng đang ở kho Kho Nha Trang",
+          timestamp: "2025-06-17T01:38:41.315Z"
+      },
+      {
+          location: "Kho Hồ Chí Minh",
+          status: "DEPARTURE_WAREHOUSE",
+          note: "Đơn hàng đã rời kho Kho Hồ Chí Minh",
+          timestamp: "2025-06-17T02:38:41.315Z"
+      },
+      {
+          location: "Hà Nội",
+          status: "IN_TRANSIT",
+          note: "Đơn hàng đang di chuyển qua Hà Nội",
+          timestamp: "2025-06-17T03:38:41.315Z"
+      }
+  ],
+  createdAt: "2025-06-17T04:38:41.316Z",
+  updatedAt: "2025-06-17T04:38:41.316Z"
+}
+
 const reasons_for_funded = [
   'Sản phẩm bị lỗi, hư hỏng',
   'Giao sai sản phẩm',
@@ -506,6 +590,8 @@ const Profile = () => {
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  const [orderShipment, setOrderShipment] = useState<OrderShipment | null>(null);
+
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
       ...userInfo,
@@ -633,7 +719,8 @@ const Profile = () => {
   };
 
   const handleTrackOrder = async (order: OrderType) => {
-    console.log('chức năng chưa triển khai, đơn hàng:', order);
+    // tạm thời lấy dữ liệu mẫu thay cho gọi api thật
+    setOrderShipment(orderShipmentMock);
   }
 
   const handleReviewOrder = async (order: OrderType) => {
@@ -839,10 +926,20 @@ const Profile = () => {
                         <Eye className="w-4 h-4 mr-1" />
                         Chi tiết
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {['pending', 'confirmed', 'ready_to_ship', 'shipping'].includes(order.order_status) ? 'Theo dõi đơn hàng' : 'Lịch sử vận chuyển'}
-                      </Button>
+                      {['ready_to_ship', 'shipping'].includes(order.order_status) && (
+                        <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Theo dõi đơn hàng
+                        </Button>
+                      )}
+
+                      {['delivered', 'cancelled', 'refunded'].includes(order.order_status) && (
+                        <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Lịch sử vận chuyển
+                        </Button>
+                      )}
+
                       {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                         <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
                           <CreditCard className="w-4 h-4 mr-1" />
@@ -3265,6 +3362,204 @@ const Profile = () => {
                 className="w-full h-auto"
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Tracking Dialog */}
+        <Dialog open={!!orderShipment} onOpenChange={(open) => !open && setOrderShipment(null)}>
+          <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[100vh]">
+            <DialogHeader>
+              <DialogTitle>Theo dõi đơn hàng</DialogTitle>
+              <DialogDescription>
+                Mã vận đơn: {orderShipment?.tracking_number}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Current Status */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                {[SHIPPING_STATUS.WAITING_FOR_PICKUP, SHIPPING_STATUS.PICKED_UP, SHIPPING_STATUS.IN_TRANSIT, SHIPPING_STATUS.DELIVERED].includes(orderShipment?.current_status) ? (
+                  <div className="space-y-4">
+                    {/* Progress Points */}
+                    <div className="relative">
+                      {/* Connecting Line */}
+                      <div className="absolute top-5 left-0 w-full h-[2px] bg-gray-200"></div>
+                      
+                      {/* Progress Line */}
+                      <div 
+                        className="absolute top-5 left-0 h-[2px] bg-medical-blue transition-all duration-300"
+                        style={{
+                          width: orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? '0%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? '33%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? '66%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? '100%' : '0%'
+                        }}
+                      ></div>
+
+                      {/* Points */}
+                      <div className="relative z-10 flex justify-between">
+                        {/* Waiting for Pickup */}
+                        <div className="flex flex-col items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
+                            orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "border-medical-blue" : 
+                            ["PICKED_UP", "IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                          )}>
+                            {["PICKED_UP", "IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? (
+                              <Check className="w-5 h-5 text-white" />
+                            ) : (
+                              <div className={cn(
+                                "w-3 h-3 rounded-full",
+                                orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "bg-medical-blue" : "bg-gray-300"
+                              )}></div>
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-xs text-center",
+                            orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "text-medical-blue font-medium" : "text-gray-500"
+                          )}>Chờ lấy hàng</span>
+                        </div>
+
+                        {/* Picked Up */}
+                        <div className="flex flex-col items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
+                            orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? "border-medical-blue" :
+                            ["IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                          )}>
+                            {["IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? (
+                              <Check className="w-5 h-5 text-white" />
+                            ) : (
+                              <div className={cn(
+                                "w-3 h-3 rounded-full",
+                                orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? "bg-medical-blue" : "bg-gray-300"
+                              )}></div>
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-xs text-center",
+                            orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? "text-medical-blue font-medium" : "text-gray-500"
+                          )}>Lấy hàng thành công</span>
+                        </div>
+
+                        {/* In Transit */}
+                        <div className="flex flex-col items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
+                            orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "border-medical-blue" :
+                            ["DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                          )}>
+                            {["DELIVERED"].includes(orderShipment?.current_status) ? (
+                              <Check className="w-5 h-5 text-white" />
+                            ) : (
+                              <div className={cn(
+                                "w-3 h-3 rounded-full",
+                                orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "bg-medical-blue" : "bg-gray-300"
+                              )}></div>
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-xs text-center",
+                            orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "text-medical-blue font-medium" : "text-gray-500"
+                          )}>Đang giao hàng</span>
+                        </div>
+
+                        {/* Delivered */}
+                        <div className="flex flex-col items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
+                            orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                          )}>
+                            {orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? (
+                              <Check className="w-5 h-5 text-white" />
+                            ) : (
+                              <div className={cn(
+                                "w-3 h-3 rounded-full",
+                                "bg-gray-300"
+                              )}></div>
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-xs text-center",
+                            orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? "text-medical-blue font-medium" : "text-gray-500"
+                          )}>Đã giao hàng</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-medical-blue" />
+                    <span className="font-medium text-medical-blue">
+                      {orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
+                       orderShipment?.current_status === SHIPPING_STATUS.RETURNED ? 'Đã hoàn trả' :
+                       orderShipment?.current_status === SHIPPING_STATUS.CANCELLED ? 'Đã hủy' :
+                       'Đang xử lý'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-4">
+                {orderShipment?.progress.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((progress, index) => (
+                  <div key={index} className="relative flex items-start">
+                    {/* Timestamp */}
+                    <div className="w-32 pr-4 text-right text-sm">
+                      <div className="font-medium">
+                        {new Date(progress.timestamp).toLocaleString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                      <div className="text-gray-500">
+                        {new Date(progress.timestamp).toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="relative flex-1 pl-6 pb-4 last:pb-0">
+                      {/* Line */}
+                      <div className="absolute left-[11px] top-0 bottom-0 w-[2px] bg-gray-200"></div>
+                      
+                      {/* Dot */}
+                      <div className={cn(
+                        "absolute left-0 top-1 w-6 h-6 rounded-full border-2 flex items-center justify-center bg-white z-10",
+                        index === 0 ? "border-medical-blue" : "border-gray-300"
+                      )}>
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          index === 0 ? "bg-medical-blue" : "bg-gray-300"
+                        )}></div>
+                      </div>
+
+                      {/* Content */}
+                      <div className={cn(
+                        "ml-2",
+                        index === 0 ? "text-medical-blue" : "text-gray-600"
+                      )}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{progress.location}</span>
+                        </div>
+                        <p className={cn(
+                          "text-sm mt-1",
+                          index === 0 ? "text-medical-blue" : "text-gray-500"
+                        )}>{progress.note}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOrderShipment(null)}>
+                Đóng
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
