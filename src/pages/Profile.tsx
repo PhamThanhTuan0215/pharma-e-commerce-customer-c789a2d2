@@ -1023,6 +1023,12 @@ const Profile = () => {
                                 Theo dõi đơn hàng
                               </Button>
                             )}
+                            {['delivered', 'cancelled', 'refunded'].includes(order.order_status) && (
+                              <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                                <MapPin className="w-4 h-4 mr-1" />
+                                Lịch sử vận chuyển
+                              </Button>
+                            )}
                             {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                               <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
                                 <CreditCard className="w-4 h-4 mr-1" />
@@ -3500,7 +3506,7 @@ const Profile = () => {
                           <span className={cn(
                             "text-xs text-center",
                             orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? "text-medical-blue font-medium" : "text-gray-500"
-                          )}>Ngoài giờ giao hàng</span>
+                          )}>Đang giao hàng</span>
                         </div>
 
                         {/* Delivered */}
