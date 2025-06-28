@@ -3392,7 +3392,7 @@ const Profile = () => {
             <div className="space-y-6">
               {/* Current Status */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                {[SHIPPING_STATUS.WAITING_FOR_PICKUP, SHIPPING_STATUS.PICKED_UP, SHIPPING_STATUS.IN_TRANSIT, SHIPPING_STATUS.DELIVERED].includes(orderShipment?.current_status) ? (
+                {[SHIPPING_STATUS.WAITING_FOR_PICKUP, SHIPPING_STATUS.PICKED_UP, SHIPPING_STATUS.IN_TRANSIT, SHIPPING_STATUS.OUT_FOR_DELIVERY, SHIPPING_STATUS.DELIVERED].includes(orderShipment?.current_status) ? (
                   <div className="space-y-4">
                     {/* Progress Points */}
                     <div className="relative">
@@ -3404,8 +3404,9 @@ const Profile = () => {
                         className="absolute top-5 left-0 h-[2px] bg-medical-blue transition-all duration-300"
                         style={{
                           width: orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? '0%' :
-                                orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? '33%' :
-                                orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? '66%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? '25%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? '50%' :
+                                orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? '75%' :
                                 orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? '100%' : '0%'
                         }}
                       ></div>
@@ -3417,9 +3418,9 @@ const Profile = () => {
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "border-medical-blue" : 
-                            ["PICKED_UP", "IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                            ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
-                            {["PICKED_UP", "IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? (
+                            {["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
                             ) : (
                               <div className={cn(
@@ -3439,9 +3440,9 @@ const Profile = () => {
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? "border-medical-blue" :
-                            ["IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                            ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
-                            {["IN_TRANSIT", "DELIVERED"].includes(orderShipment?.current_status) ? (
+                            {["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
                             ) : (
                               <div className={cn(
@@ -3461,9 +3462,9 @@ const Profile = () => {
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "border-medical-blue" :
-                            ["DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                            ["OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
-                            {["DELIVERED"].includes(orderShipment?.current_status) ? (
+                            {["OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
                             ) : (
                               <div className={cn(
@@ -3475,7 +3476,29 @@ const Profile = () => {
                           <span className={cn(
                             "text-xs text-center",
                             orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "text-medical-blue font-medium" : "text-gray-500"
-                          )}>Đang giao hàng</span>
+                          )}>Đang vận chuyển</span>
+                        </div>
+
+                       {/* Out for Delivery */}
+                       <div className="flex flex-col items-center gap-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
+                            orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? "border-medical-blue" :
+                            ["DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                          )}>
+                            {["DELIVERED"].includes(orderShipment?.current_status) ? (
+                              <Check className="w-5 h-5 text-white" />
+                            ) : (
+                              <div className={cn(
+                                "w-3 h-3 rounded-full",
+                                orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? "bg-medical-blue" : "bg-gray-300"
+                              )}></div>
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-xs text-center",
+                            orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? "text-medical-blue font-medium" : "text-gray-500"
+                          )}>Ngoài giờ giao hàng</span>
                         </div>
 
                         {/* Delivered */}
@@ -3507,7 +3530,6 @@ const Profile = () => {
                     <span className="font-medium text-medical-red">
                       {orderShipment?.current_status === SHIPPING_STATUS.IN_WAREHOUSE ? 'Đang trong kho' :
                        orderShipment?.current_status === SHIPPING_STATUS.PICKUP_FAILED ? 'Lấy hàng thất bại' :
-                       orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? 'Ngoài giờ giao hàng' :
                        orderShipment?.current_status === SHIPPING_STATUS.DELIVERY_FAILED ? 'Giao hàng thất bại' :
                       orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
                        orderShipment?.current_status === SHIPPING_STATUS.RETURNED ? 'Đã hoàn trả' :
