@@ -277,37 +277,37 @@ interface OrderShipment {
 }
 
 // mock data of order shipment
-const orderShipmentMock: OrderShipment = {
-  id: "1",
-  order_id: "1",
-  tracking_number: "SH202506171138416686",
-  shipping_provider_id: "1",
-  shipping_address_from_id: "1",
-  shipping_address_to_id: "2",
-  current_status: "IN_TRANSIT",
-  progress: [
-      {
-          location: "Kho Nha Trang",
-          status: "ARRIVAL_WAREHOUSE",
-          note: "Đơn hàng đang ở kho Kho Nha Trang",
-          timestamp: "2025-06-17T01:38:41.315Z"
-      },
-      {
-          location: "Kho Hồ Chí Minh",
-          status: "DEPARTURE_WAREHOUSE",
-          note: "Đơn hàng đã rời kho Kho Hồ Chí Minh",
-          timestamp: "2025-06-17T02:38:41.315Z"
-      },
-      {
-          location: "Hà Nội",
-          status: "IN_TRANSIT",
-          note: "Đơn hàng đang di chuyển qua Hà Nội",
-          timestamp: "2025-06-17T03:38:41.315Z"
-      }
-  ],
-  createdAt: "2025-06-17T04:38:41.316Z",
-  updatedAt: "2025-06-17T04:38:41.316Z"
-}
+// const orderShipmentMock: OrderShipment = {
+//   id: "1",
+//   order_id: "1",
+//   tracking_number: "SH202506171138416686",
+//   shipping_provider_id: "1",
+//   shipping_address_from_id: "1",
+//   shipping_address_to_id: "2",
+//   current_status: "IN_TRANSIT",
+//   progress: [
+//       {
+//           location: "Kho Nha Trang",
+//           status: "ARRIVAL_WAREHOUSE",
+//           note: "Đơn hàng đang ở kho Kho Nha Trang",
+//           timestamp: "2025-06-17T01:38:41.315Z"
+//       },
+//       {
+//           location: "Kho Hồ Chí Minh",
+//           status: "DEPARTURE_WAREHOUSE",
+//           note: "Đơn hàng đã rời kho Kho Hồ Chí Minh",
+//           timestamp: "2025-06-17T02:38:41.315Z"
+//       },
+//       {
+//           location: "Hà Nội",
+//           status: "IN_TRANSIT",
+//           note: "Đơn hàng đang di chuyển qua Hà Nội",
+//           timestamp: "2025-06-17T03:38:41.315Z"
+//       }
+//   ],
+//   createdAt: "2025-06-17T04:38:41.316Z",
+//   updatedAt: "2025-06-17T04:38:41.316Z"
+// }
 
 const reasons_for_funded = [
   'Sản phẩm bị lỗi, hư hỏng',
@@ -714,13 +714,27 @@ const Profile = () => {
         variant: 'error',
         description: error.response.data.message || error.message,
       });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleTrackOrder = async (order: OrderType) => {
-    // tạm thời lấy dữ liệu mẫu thay cho gọi api thật
-    setOrderShipment(orderShipmentMock);
+    setIsLoading(true);
+    try {
+      const response = await shipmentApi.get(`/shipments/shipping-orders/order/${order.id}`);
+      if (response.data.code === 0) {
+        const orderShipment = response.data.data;
+        setOrderShipment(orderShipment);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleReviewOrder = async (order: OrderType) => {
