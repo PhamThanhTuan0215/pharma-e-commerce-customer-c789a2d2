@@ -1017,10 +1017,12 @@ const Profile = () => {
                               <Eye className="w-4 h-4 mr-1" />
                               Chi tiết
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
-                              <MapPin className="w-4 h-4 mr-1" />
-                              {['pending', 'confirmed', 'ready_to_ship', 'shipping'].includes(order.order_status) ? 'Theo dõi đơn hàng' : 'Lịch sử vận chuyển'}
-                            </Button>
+                            {['ready_to_ship', 'shipping'].includes(order.order_status) && (
+                              <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order)}>
+                                <MapPin className="w-4 h-4 mr-1" />
+                                Theo dõi đơn hàng
+                              </Button>
+                            )}
                             {((order.payment_status === 'pending' || order.payment_status === 'failed') && order.order_status !== 'cancelled') && order.payment_method.toUpperCase() === 'VNPAY' && (
                               <Button variant="outline" size="sm" onClick={() => handlePayOrder(order)} disabled={isLoadingPayOrder}>
                                 <CreditCard className="w-4 h-4 mr-1" />
@@ -3398,16 +3400,16 @@ const Profile = () => {
                     <div className="relative">
                       {/* Connecting Line */}
                       <div className="absolute top-5 left-0 w-full h-[2px] bg-gray-200"></div>
-                      
+
                       {/* Progress Line */}
-                      <div 
+                      <div
                         className="absolute top-5 left-0 h-[2px] bg-medical-blue transition-all duration-300"
                         style={{
                           width: orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? '0%' :
-                                orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? '25%' :
-                                orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? '50%' :
+                            orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? '25%' :
+                              orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? '50%' :
                                 orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? '75%' :
-                                orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? '100%' : '0%'
+                                  orderShipment?.current_status === SHIPPING_STATUS.DELIVERED ? '100%' : '0%'
                         }}
                       ></div>
 
@@ -3417,8 +3419,8 @@ const Profile = () => {
                         <div className="flex flex-col items-center gap-2">
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
-                            orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "border-medical-blue" : 
-                            ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                            orderShipment?.current_status === SHIPPING_STATUS.WAITING_FOR_PICKUP ? "border-medical-blue" :
+                              ["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
                             {["PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
@@ -3440,7 +3442,7 @@ const Profile = () => {
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.PICKED_UP ? "border-medical-blue" :
-                            ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                              ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
                             {["IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
@@ -3462,7 +3464,7 @@ const Profile = () => {
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.IN_TRANSIT ? "border-medical-blue" :
-                            ["OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                              ["OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
                             {["OUT_FOR_DELIVERY", "DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
@@ -3479,12 +3481,12 @@ const Profile = () => {
                           )}>Đang vận chuyển</span>
                         </div>
 
-                       {/* Out for Delivery */}
-                       <div className="flex flex-col items-center gap-2">
+                        {/* Out for Delivery */}
+                        <div className="flex flex-col items-center gap-2">
                           <div className={cn(
                             "w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white",
                             orderShipment?.current_status === SHIPPING_STATUS.OUT_FOR_DELIVERY ? "border-medical-blue" :
-                            ["DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
+                              ["DELIVERED"].includes(orderShipment?.current_status) ? "border-medical-blue bg-medical-blue" : "border-gray-300"
                           )}>
                             {["DELIVERED"].includes(orderShipment?.current_status) ? (
                               <Check className="w-5 h-5 text-white" />
@@ -3529,16 +3531,16 @@ const Profile = () => {
                     <Package className="w-5 h-5 text-medical-red" />
                     <span className="font-medium text-medical-red">
                       {orderShipment?.current_status === SHIPPING_STATUS.IN_WAREHOUSE ? 'Đang trong kho' :
-                       orderShipment?.current_status === SHIPPING_STATUS.PICKUP_FAILED ? 'Lấy hàng thất bại' :
-                       orderShipment?.current_status === SHIPPING_STATUS.DELIVERY_FAILED ? 'Giao hàng thất bại' :
-                      orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
-                       orderShipment?.current_status === SHIPPING_STATUS.RETURNED ? 'Đã hoàn trả' :
-                       orderShipment?.current_status === SHIPPING_STATUS.CANCELLED ? 'Đã hủy' :
-                       orderShipment?.current_status === SHIPPING_STATUS.LOST ? 'Mất hàng' :
-                       orderShipment?.current_status === SHIPPING_STATUS.DAMAGED ? 'Hàng bị hỏng' :
-                       orderShipment?.current_status === SHIPPING_STATUS.ON_HOLD ? 'Đang chờ' :
+                        orderShipment?.current_status === SHIPPING_STATUS.PICKUP_FAILED ? 'Lấy hàng thất bại' :
+                          orderShipment?.current_status === SHIPPING_STATUS.DELIVERY_FAILED ? 'Giao hàng thất bại' :
+                            orderShipment?.current_status === SHIPPING_STATUS.RETURNING ? 'Đang hoàn trả' :
+                              orderShipment?.current_status === SHIPPING_STATUS.RETURNED ? 'Đã hoàn trả' :
+                                orderShipment?.current_status === SHIPPING_STATUS.CANCELLED ? 'Đã hủy' :
+                                  orderShipment?.current_status === SHIPPING_STATUS.LOST ? 'Mất hàng' :
+                                    orderShipment?.current_status === SHIPPING_STATUS.DAMAGED ? 'Hàng bị hỏng' :
+                                      orderShipment?.current_status === SHIPPING_STATUS.ON_HOLD ? 'Đang chờ' :
 
-                       'Đang xử lý'}
+                                        'Đang xử lý'}
                     </span>
                   </div>
                 )}
@@ -3568,7 +3570,7 @@ const Profile = () => {
                     <div className="relative flex-1 pl-6 pb-4 last:pb-0">
                       {/* Line */}
                       <div className="absolute left-[11px] top-0 bottom-0 w-[2px] bg-gray-200"></div>
-                      
+
                       {/* Dot */}
                       <div className={cn(
                         "absolute left-0 top-1 w-6 h-6 rounded-full border-2 flex items-center justify-center bg-white z-10",
