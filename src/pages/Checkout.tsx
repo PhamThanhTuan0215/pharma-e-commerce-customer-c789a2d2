@@ -1131,6 +1131,24 @@ const Checkout = () => {
       is_default: addressForm.is_default
     }
 
+    const addressDefault = addresses.find(addr => addr.is_default);
+
+    // If this is the first address, make it default
+    if (!addressDefault) {
+      payload.is_default = true;
+    }
+    // If editing and this address was default, keep it default
+    else if (isEditingAddress && addressDefault?.id === editingAddressId) {
+      payload.is_default = true;
+    }
+    else if (isEditingAddress && addressDefault?.id !== editingAddressId) {
+      payload.is_default = false;
+    }
+    // If there's already a default address and this is a new address, make it non-default
+    else if (!isEditingAddress && addressDefault) {
+      payload.is_default = false;
+    }
+
     if (isEditingAddress) {
       // Update existing address
       shipmentApi.put(`/shipments/addresses/${editingAddressId}`, payload)
@@ -1174,7 +1192,13 @@ const Checkout = () => {
             setSelectedAddress(newAddress.id);
             const slectedAddress = newAddresses.find(address => address.id === newAddress.id);
             if (slectedAddress) {
-              fetchShippingFee(slectedAddress);
+              // trong trường hợp thêm địa chỉ mới khi chưa có địa chỉ nào trước đó thì cần load lại giỏ hàng
+              if (newAddresses.length === 1) {
+                fetchStoreOrders(newAddresses);
+              }
+              else {
+                fetchShippingFee(slectedAddress);
+              }
             }
 
             setShowAddressDialog(false);

@@ -632,7 +632,7 @@ const Profile = () => {
     const statusMap: { [key: string]: string } = {
       'pending': 'Chờ xác nhận',
       'confirmed': 'Đã xác nhận',
-      'ready_to_ship': 'Chờ lấy hàng',
+      'ready_to_ship': 'Chờ giao hàng',
       'shipping': 'Đang giao',
       'delivered': 'Đã giao',
       'cancelled': 'Đã hủy',
@@ -662,7 +662,7 @@ const Profile = () => {
   const getReturnedOrderStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'processing': 'Đang xử lý',
-      'ready_to_ship': 'Chờ lấy hàng',
+      'ready_to_ship': 'Chờ giao hàng',
       'shipping': 'Đang giao',
       'returned': 'Đã hoàn trả',
       'failed': 'Đã hủy'
@@ -901,7 +901,7 @@ const Profile = () => {
                 <TabsTrigger value="all" className="relative mr-2 border-2 border-grey-300 pt-4">Tất cả {orders.length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.length}</span>} </TabsTrigger>
                 <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận {orders.filter(order => order.order_status === 'pending').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span>} </TabsTrigger>
                 <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận {orders.filter(order => order.order_status === 'confirmed').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span>} </TabsTrigger>
-                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ giao hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
                 <TabsTrigger value="shipping" className="relative mr-2 border-2 border-grey-300 pt-4">Đang giao {orders.filter(order => order.order_status === 'shipping').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'shipping').length}</span>} </TabsTrigger>
                 <TabsTrigger value="delivered" className="relative mr-2 border-2 border-grey-300 pt-4">Đã giao {orders.filter(order => order.order_status === 'delivered').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'delivered').length}</span>} </TabsTrigger>
                 <TabsTrigger value="cancelled" className="relative mr-2 border-2 border-grey-300 pt-4">Đã hủy {orders.filter(order => order.order_status === 'cancelled').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'cancelled').length}</span>} </TabsTrigger>
@@ -917,7 +917,7 @@ const Profile = () => {
               <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
                 <TabsTrigger value="pending" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ xác nhận {orders.filter(order => order.order_status === 'pending').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'pending').length}</span>} </TabsTrigger>
                 <TabsTrigger value="confirmed" className="relative mr-2 border-2 border-grey-300 pt-4">Đã xác nhận {orders.filter(order => order.order_status === 'confirmed').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'confirmed').length}</span>} </TabsTrigger>
-                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ lấy hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
+                <TabsTrigger value="ready_to_ship" className="relative mr-2 border-2 border-grey-300 pt-4">Chờ giao hàng {orders.filter(order => order.order_status === 'ready_to_ship').length === 0 ? '' : <span className="absolute -top-2 -right-2 text-red-500 rounded-full px-2 py-1 text-lg">{orders.filter(order => order.order_status === 'ready_to_ship').length}</span>} </TabsTrigger>
               </TabsList>
 
               <TabsList className="grid grid-cols-3 sm:grid-cols-7 gap-2 pb-2">
@@ -3134,7 +3134,7 @@ const Profile = () => {
 
     setIsLoading(true);
 
-    orderApi.get(`/orders?user_id=${user.id}`)
+    orderApi.get(`/orders/user?user_id=${user.id}`)
       .then((response) => {
         if (response.data.code === 0) {
           const orders = response.data.data;
