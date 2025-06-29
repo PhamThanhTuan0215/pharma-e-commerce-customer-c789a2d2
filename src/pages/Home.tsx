@@ -57,7 +57,7 @@ const Home = () => {
     const [promotions, setPromotions] = useState<Promotion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
-    const ITEMS_PER_PAGE = 1;
+    const ITEMS_PER_PAGE = 5;
     const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
     const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
