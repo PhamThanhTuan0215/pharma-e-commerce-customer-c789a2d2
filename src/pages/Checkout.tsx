@@ -348,6 +348,19 @@ const Checkout = () => {
   }
 
   const fetchStoreOrders = async (currentAddresses: AddressType[]) => {
+
+    const address = currentAddresses.find(address => address.is_default);
+
+    if (!address) {
+      handleAddNewAddress();
+
+      toast({
+        variant: 'info',
+        description: 'Vui lòng thêm địa chỉ giao hàng',
+      });
+      return;
+    }
+
     setIsStoreOrdersLoading(true);
     try {
       const response = await customerApi.get(`/carts/checkout?user_id=${user.id}`)
@@ -355,7 +368,6 @@ const Checkout = () => {
         const storeOrders = response.data.data;
 
         // gọi api để tính phí vận chuyển cho nhiều cửa hàng cùng lúc
-        const address = currentAddresses.find(address => address.is_default);
 
         const store_ids = [];
         storeOrders.forEach(storeOrder => {
