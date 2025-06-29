@@ -266,6 +266,7 @@ interface ShipmentProgress {
 interface OrderShipment {
   id: string;
   order_id: string;
+  returned_order_id: string | null;
   tracking_number: string;
   shipping_provider_id: string;
   shipping_address_from_id: string;
@@ -661,6 +662,8 @@ const Profile = () => {
   const getReturnedOrderStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'processing': 'Đang xử lý',
+      'ready_to_ship': 'Chờ lấy hàng',
+      'shipping': 'Đang giao',
       'returned': 'Đã hoàn trả',
       'failed': 'Đã hủy'
     };
@@ -670,6 +673,8 @@ const Profile = () => {
   const getReturnedOrderStatusColor = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'processing': 'bg-yellow-100 text-yellow-800',
+      'ready_to_ship': 'bg-orange-100 text-orange-800',
+      'shipping': 'bg-orange-100 text-orange-800',
       'returned': 'bg-green-100 text-green-800',
       'failed': 'bg-red-100 text-red-800'
     };
@@ -723,6 +728,24 @@ const Profile = () => {
     setIsLoading(true);
     try {
       const response = await shipmentApi.get(`/shipments/shipping-orders/order/${order.id}`);
+      if (response.data.code === 0) {
+        const orderShipment = response.data.data;
+        setOrderShipment(orderShipment);
+      }
+    } catch (error) {
+      toast({
+        variant: 'error',
+        description: error.response.data.message || error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleTrackReturnedOrder = async (returnedOrderId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await shipmentApi.get(`/shipments/shipping-orders/returned-order/${returnedOrderId}`);
       if (response.data.code === 0) {
         const orderShipment = response.data.data;
         setOrderShipment(orderShipment);
@@ -1908,6 +1931,19 @@ const Profile = () => {
                           <Eye className="w-4 h-4 mr-1" />
                           Chi tiết
                         </Button>
+                        {['ready_to_ship', 'shipping'].includes(order.order_status) && (
+                          <Button variant="outline" size="sm" onClick={() => handleTrackReturnedOrder(order.id)}>
+                            <MapPin className="w-4 h-4 mr-1" />
+                            Theo dõi đơn hàng
+                          </Button>
+                        )}
+
+                        {['returned', 'failed'].includes(order.order_status) && (
+                          <Button variant="outline" size="sm" onClick={() => handleTrackReturnedOrder(order.id)}>
+                            <MapPin className="w-4 h-4 mr-1" />
+                            Lịch sử vận chuyển
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
