@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import notificationApi from '@/services/api-notification-service';
+import { toast } from '@/hooks/use-toast';
 
 
 const queryClient = new QueryClient();
@@ -52,6 +53,18 @@ const App = () => {
     };
 
     fetchFCMToken();
+
+    // Real-time notification listener
+    const handleMessage = (payload: any) => {
+      if (payload?.notification) {
+        toast({
+          variant: 'default',
+          title: payload.notification.title,
+          description: payload.notification.body,
+        });
+      }
+    };
+    onMessageListener(handleMessage);
 
   }, []);
 
