@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus, X, Plus } from 'lucide-react';
+import { User, MapPin, Lock, Bell, Package, Heart, CreditCard, LogOut, Edit, Eye, Star, EyeOff, Check, Trash, Loader2, PackageMinus, X, Plus, CheckCircle, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import notificationAPI from '@/services/api-notification-service';
 
 interface AddressType {
   id?: string;
@@ -592,6 +593,9 @@ const Profile = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [orderShipment, setOrderShipment] = useState<OrderShipment | null>(null);
+
+  const [notifications, setNotifications] = useState([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   const handleInputChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
@@ -2505,6 +2509,48 @@ const Profile = () => {
           </Card>
         );
 
+      case 'notifications':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Thông báo của tôi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingNotifications ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">Không có thông báo nào.</div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {notifications.map((n) => (
+                    <div key={n.id} className={`flex items-start justify-between p-4 ${n.is_read ? 'bg-white' : 'bg-blue-50'}`}>
+                      <div>
+                        <div className="font-semibold text-base flex items-center gap-2">
+                          {!n.is_read ? <Circle className="w-3 h-3 text-blue-500" /> : <Circle className="w-3 h-3 text-gray-300" />}
+                          {n.title}
+                        </div>
+                        <div className="text-sm text-gray-700 mt-1">{n.body}</div>
+                        <div className="text-xs text-gray-400 mt-1">{n.created_at}</div>
+                      </div>
+                      {!n.is_read && (
+                        <button
+                          className="ml-2 text-blue-500 hover:text-green-600 transition-colors"
+                          title="Đánh dấu đã đọc"
+                          onClick={() => handleMarkAsRead(n.id)}
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+
       default:
         return (
           <Card>
@@ -3353,6 +3399,34 @@ const Profile = () => {
     fetchUserInfo();
     fetchAddresses();
   }, []);
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    if (!isLoggedIn || !user?.id) return;
+    setIsLoadingNotifications(true);
+    try {
+      const res = await notificationAPI.get(`/notifications?target_type=customer&target_id=${user.id}`);
+      setNotifications(res.data.data || []);
+    } catch (err) {
+      setNotifications([]);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await notificationAPI.post('/notifications/mark-as-read', { notificationId });
+      setNotifications((prev) => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
+    } catch (err) { }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      fetchNotifications();
+    }
+  }, [activeTab, isLoggedIn, user?.id]);
 
   return (
     <div className="min-h-screen bg-gray-50">

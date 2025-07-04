@@ -16,13 +16,46 @@ import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import { requestFCMToken, onMessageListener } from './utils/firebaseUtils';
+import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Footer from "./components/Footer";
+import notificationApi from '@/services/api-notification-service';
+
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <>
+const App = () => {
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    const fetchFCMToken = async () => {
+      try {
+        const token = await requestFCMToken();
+        setFcmToken(token);
+        // Gọi API lưu FCM token nếu có token và storeId
+        if (token && user) {
+          try {
+            await notificationApi.post('notifications/save-fcm-token', {
+              token: token,
+              target_type: 'customer',
+              target_id: user.id
+            })
+          } catch (err) {
+            console.error('Error saving FCM token:', err);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching FCM token:", error);
+      }
+    };
+
+    fetchFCMToken();
+
+  }, []);
+
+  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -49,7 +82,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </>
-);
+  );
+};
 
 export default App;
