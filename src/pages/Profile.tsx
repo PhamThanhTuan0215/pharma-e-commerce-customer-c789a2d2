@@ -699,7 +699,7 @@ const Profile = () => {
   const getPaymentStatusText = (status: string, isRefunded: boolean = false) => {
     const statusMap: { [key: string]: string } = {
       'pending': isRefunded ? 'Chờ hoàn tiền' : 'Chờ thanh toán',
-      'completed': 'Đã thanh toán',
+      'completed': isRefunded ? 'Đã hoàn tiền' : 'Đã thanh toán',
       'failed': 'Thanh toán thất bại',
       'cancelled': 'Đã hủy',
       'refunded': 'Đã hoàn tiền'
