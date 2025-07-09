@@ -179,7 +179,7 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
             <div className="flex-1 min-w-0 mx-4 flex justify-center bg-blue-500 rounded-lg">
               <Button onClick={() => navigate('/recommendation')} variant="ghost" size="sm" className="relative text-white hover:bg-primary-500 w-full">
                 <BookOpen className="w-5 h-5" />
-                <span>Gợi ý thuốc</span>
+                <span >Gợi ý thuốc</span>
               </Button>
             </div>
 

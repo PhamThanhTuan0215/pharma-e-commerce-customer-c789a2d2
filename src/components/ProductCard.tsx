@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 interface Product {
   id: string;
   name: string;
+  category_name: string | null; // tương đương với med_group
   retail_price: number;
   stock: number;
   url_image: string;
@@ -83,8 +84,12 @@ const ProductCard = ({ product, onToggleWishlist, onAddToCart, isInWishlist }: P
           </h3>
         }
 
+        {product.category_name && <Badge variant="outline" className="text-sm font-medium text-gray-900 mb-2 min-h-[2.5rem] text-medical-blue text-center items-center justify-center">
+          {product.category_name}
+        </Badge>}
+
         <div className="flex items-center justify-between mb-2">
-          <div>
+          <div className="flex items-center line-clamp-2 min-h-[3.2rem]">
             {/* hiển thị giá gốc bị gạch và giá thực tế */}
             {product.retail_price != product.actual_price && <span className="text-lg font-bold text-gray-500 line-through mr-2">
               {formatPrice(product.retail_price)}

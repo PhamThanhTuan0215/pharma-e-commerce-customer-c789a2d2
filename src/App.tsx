@@ -22,6 +22,7 @@ import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import notificationApi from '@/services/api-notification-service';
 import { toast } from '@/hooks/use-toast';
+import Recommendation from "./pages/Recommendation";
 
 
 const queryClient = new QueryClient();
@@ -86,6 +87,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/voucher" element={<Voucher />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/recommendation" element={<Recommendation />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/failed" element={<PaymentFailed />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
