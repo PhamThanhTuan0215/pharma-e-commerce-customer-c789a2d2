@@ -139,7 +139,7 @@ const Recommendation = () => {
             cancelToken: draftCancelToken.token
         }).catch((error) => {
             // Không cần xử lý lỗi của request nháp
-            console.log("Draft request canceled or failed:", error.message);
+            // console.log("Draft request canceled or failed:", error.message);
         });
         
         // Tự động hủy request nháp sau 1 giây và gọi request thật
@@ -206,10 +206,10 @@ const Recommendation = () => {
         if (cancelTokenRef.current) {
             cancelTokenRef.current.cancel('Người dùng đã hủy yêu cầu');
             cancelTokenRef.current = null;
-            setIsLoading(false);
         }
 
         setPrediction(null);
+        setIsLoading(false);
         // Xóa dữ liệu khi người dùng hủy phân tích
         clearPredictionFromStorage();
     }
