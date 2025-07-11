@@ -14,7 +14,9 @@ import {callWithPrewarm} from '@/services/api-ai-recommendation-service-v2';
 import { toast } from '@/hooks/use-toast';
 import axios, { CancelTokenSource } from 'axios';
 import productApi from '@/services/api-product-service';
+import customerApi from '@/services/api-customer-service';
 import ProductCard from '@/components/ProductCard';
+import { useNavigate } from 'react-router-dom';
 
 interface Suggestion {
     med_group: string; // tên nhóm thuốc
@@ -65,11 +67,16 @@ const PREDICTION_STORAGE_KEY = 'pharma_recommendation_prediction';
 const LIMIT_PRODUCT_PER_PAGE = 6; // Số sản phẩm trên mỗi trang
 
 const Recommendation = () => {
+    const navigate = useNavigate();
     const [prediction, setPrediction] = useState<Prediction | null>(null);
     const [userInput, setUserInput] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isLoadingProducts, setIsLoadingProducts] = useState<{[key: number]: boolean}>({});
     const cancelTokenRef = useRef<CancelTokenSource | null>(null);
+    const [productIdsInWishlist, setProductIdsInWishlist] = useState<string[]>([]);
+
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
 
     // Đọc dữ liệu prediction từ localStorage khi component mount
     useEffect(() => {
@@ -317,6 +324,140 @@ const Recommendation = () => {
         return Math.max(1, Math.ceil(totalItems / LIMIT_PRODUCT_PER_PAGE));
     };
 
+    const handleToggleWishlist = (product: Product) => {
+        if (!isLoggedIn) {
+            toast({
+                variant: 'error',
+                description: 'Vui lòng đăng nhập để sử dụng chức năng này',
+            });
+            return;
+        }
+
+        if (productIdsInWishlist.includes(product.id)) {
+            const params = {
+                user_id: user.id,
+                product_id: product.id
+            }
+
+            customerApi.delete(`/wishlists/remove`, { params })
+                .then((response) => {
+                    if (response.data.code === 0) {
+                        const wilistItemDeleted = response.data.data;
+                        setProductIdsInWishlist(productIdsInWishlist.filter(id => id !== wilistItemDeleted.product_id));
+
+                        toast({
+                            variant: 'success',
+                            description: response.data.message,
+                        });
+                    }
+                })
+                .catch((error) => {
+                    toast({
+                        variant: 'error',
+                        description: error.response.data.message || error.message,
+                    });
+                });
+        }
+        else {
+            const payload = {
+                user_id: user.id,
+                product_id: product.id,
+                product_name: product.name,
+                product_url_image: product.url_image,
+                price: product.retail_price,
+                seller_id: product.seller_id,
+                seller_name: product.seller_name
+            }
+
+            customerApi.post(`/wishlists/add`, payload)
+                .then((response) => {
+                    if (response.data.code === 0) {
+                        const wishlistItemAdded = response.data.data;
+                        setProductIdsInWishlist([...productIdsInWishlist, wishlistItemAdded.product_id]);
+
+                        toast({
+                            variant: 'success',
+                            description: response.data.message,
+                        });
+                    }
+                })
+                .catch((error) => {
+                    toast({
+                        variant: 'error',
+                        description: error.response.data.message || error.message,
+                    });
+                });
+        }
+    };
+
+    const handleAddToCart = (product: Product) => {
+        if (!isLoggedIn) {
+            toast({
+                variant: 'error',
+                description: 'Vui lòng đăng nhập để sử dụng chức năng này',
+            });
+            return;
+        }
+
+        const payload = {
+            user_id: user.id,
+            product_id: product.id,
+            product_name: product.name,
+            product_url_image: product.url_image,
+            price: product.retail_price,
+            seller_id: product.seller_id,
+            seller_name: product.seller_name,
+            quantity: 1
+        }
+
+        customerApi.post(`/carts/add`, payload)
+            .then((response) => {
+                if (response.data.code === 0) {
+                    toast({
+                        variant: 'success',
+                        description: response.data.message,
+                    });
+                }
+            })
+            .catch((error) => {
+                toast({
+                    variant: 'error',
+                    description: error.response.data.message || error.message,
+                });
+            });
+    };
+
+    const fetchProductIdsInWishlist = async () => {
+        if (!isLoggedIn) return;
+
+        const params = {
+            user_id: user.id
+        }
+
+        customerApi.get(`/wishlists/product-ids`, { params })
+            .then((response) => {
+                if (response.data.code === 0) {
+                    const productIds = response.data.data;
+                    setProductIdsInWishlist(productIds);
+                }
+            })
+            .catch((error) => {
+                toast({
+                    variant: 'error',
+                    description: error.response.data.message || error.message,
+                });
+            });
+    }
+
+    useEffect(() => {
+        fetchProductIdsInWishlist();
+    }, []);
+
+    // Add handleProductClick function
+    const handleProductClick = (productId: string) => {
+        navigate(`/products/${productId}`);
+    };
+
     // Cleanup khi component unmount
     useEffect(() => {
         return () => {
@@ -426,11 +567,25 @@ const Recommendation = () => {
                                             <AccordionTrigger>Quá trình ánh xạ triệu chứng</AccordionTrigger>
                                             <AccordionContent>
                                                 <div className="space-y-2 text-sm">
-                                                    {prediction.matched_logs.map((log, index) => (
-                                                        <div key={index} className="p-2 bg-gray-50 rounded-md">
-                                                            {log}
-                                                        </div>
-                                                    ))}
+                                                    {prediction.matched_logs.map((log, index) => {
+                                                        // Kiểm tra xem log có chứa tỉ lệ phần trăm không
+                                                        const percentageMatch = log.match(/\((\d+\.\d+)%\)/);
+                                                        const percentage = percentageMatch ? parseFloat(percentageMatch[1]) : 0;
+                                                        const isPerfectMatch = percentage === 100;
+
+                                                        return (
+                                                            <div 
+                                                                key={index} 
+                                                                className={`p-2 rounded-md ${
+                                                                    isPerfectMatch 
+                                                                    ? 'bg-green-50 text-green-700' 
+                                                                    : 'bg-blue-50 text-blue-700'
+                                                                }`}
+                                                            >
+                                                                {log}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </AccordionContent>
                                         </AccordionItem>
@@ -531,7 +686,14 @@ const Recommendation = () => {
                                                                 <>
                                                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                                                         {disease.suggestions_products.map((product, productIdx) => (
-                                                                            <ProductCard key={productIdx} product={product} />
+                                                                            <div key={productIdx} onClick={() => handleProductClick(product.id)} className="cursor-pointer">
+                                                                                <ProductCard 
+                                                                                    product={product} 
+                                                                                    onToggleWishlist={handleToggleWishlist}
+                                                                                    onAddToCart={handleAddToCart}
+                                                                                    isInWishlist={productIdsInWishlist.includes(product.id)}
+                                                                                />
+                                                                            </div>
                                                                         ))}
                                                                     </div>
                                                                     

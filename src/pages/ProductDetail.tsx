@@ -66,6 +66,11 @@ interface Review {
 }
 
 const ProductDetail = () => {
+  // cuộn lên đầu trang
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const { tab, _selectedOrder } = useLocation().state || { tab: 'profile', _selectedOrder: null };
 
   const { id } = useParams();

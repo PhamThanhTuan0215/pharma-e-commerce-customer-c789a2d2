@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 interface Product {
   id: string;
   name: string;
-  category_name: string | null; // tương đương với med_group
+  category_name?: string; // tương đương với med_group
   retail_price: number;
   stock: number;
   url_image: string;
