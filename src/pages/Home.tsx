@@ -330,6 +330,10 @@ const Home = () => {
         navigate(`/products/${productId}`);
     };
 
+    const handleCatalogProductClick = (catalogProductId: string) => {
+        navigate(`/catalog-products/${catalogProductId}`);
+    };
+
     // Calculate countdown to end of current day
     const calculateTimeLeft = () => {
         const now = new Date();
@@ -556,7 +560,7 @@ const Home = () => {
                                                     <div
                                                         key={product.id}
                                                         className="cursor-pointer transform transition-all duration-200 hover:scale-105"
-                                                        onClick={() => handleProductClick(product.id)}
+                                                        onClick={() => handleCatalogProductClick(product.id)}
                                                     >
                                                         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                                                             <div className="aspect-square relative">

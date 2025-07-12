@@ -23,6 +23,7 @@ import Footer from "./components/Footer";
 import notificationApi from '@/services/api-notification-service';
 import { toast } from '@/hooks/use-toast';
 import Recommendation from "./pages/Recommendation";
+import CatalogProductDetail from "./pages/CatalogProductDetail";
 
 
 const queryClient = new QueryClient();
@@ -79,6 +80,7 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<Products />} />
             <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/catalog-products/:id" element={<CatalogProductDetail />} />
             <Route path="/stores/:id" element={<Store />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/cart" element={<Cart />} />
