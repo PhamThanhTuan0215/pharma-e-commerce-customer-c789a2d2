@@ -542,27 +542,53 @@ const Products = () => {
                         />
                       </PaginationItem>
 
-                      {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              isActive={currentPage === pageNum}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setCurrentPage(pageNum);
-                              }}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      })}
+                      {(() => {
+                        const pages = [];
+                        let startPage = Math.max(1, currentPage - 2);
+                        let endPage = Math.min(totalPages, startPage + 4);
+                        
+                        // Adjust start page if we're near the end
+                        if (endPage - startPage < 4) {
+                          startPage = Math.max(1, endPage - 4);
+                        }
 
-                      {totalPages > 5 && (
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                href="#"
+                                isActive={currentPage === i}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setCurrentPage(i);
+                                }}
+                              >
+                                {i}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+
+                      {totalPages > 5 && currentPage + 2 < totalPages && (
                         <PaginationItem>
                           <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+
+                      {totalPages > 5 && currentPage + 2 < totalPages && (
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(totalPages);
+                            }}
+                          >
+                            {totalPages}
+                          </PaginationLink>
                         </PaginationItem>
                       )}
 
