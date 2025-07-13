@@ -7,6 +7,7 @@ import notificationAPI from '@/services/api-notification-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { NEW_NOTIFICATION_EVENT } from '@/App';
 
 interface HeaderProps {
   isShowMenu?: boolean;
@@ -25,21 +26,35 @@ const Header = ({ isShowMenu, isEnableSearchBar, onMenuClick, onSearch }: Header
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const fetchNotifications = async () => {
+    if (!isLoggedIn || !user?.id) return;
+    try {
+      const res = await notificationAPI.get(
+        `/notifications?target_type=customer&target_id=${user.id}`
+      );
+      setNotifications(res.data.data || []);
+      setNotificationCount(res.data.total || 0);
+    } catch (err) {
+      setNotifications([]);
+      setNotificationCount(0);
+    }
+  };
+
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!isLoggedIn || !user?.id) return;
-      try {
-        const res = await notificationAPI.get(
-          `/notifications?target_type=customer&target_id=${user.id}`
-        );
-        setNotifications(res.data.data || []);
-        setNotificationCount(res.data.total || 0);
-      } catch (err) {
-        setNotifications([]);
-        setNotificationCount(0);
-      }
-    };
+    // Initial fetch
     fetchNotifications();
+
+    // Listen for new notifications
+    const handleNewNotification = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener(NEW_NOTIFICATION_EVENT, handleNewNotification);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(NEW_NOTIFICATION_EVENT, handleNewNotification);
+    };
   }, [isLoggedIn, user?.id]);
 
   const handleLogoClick = () => {

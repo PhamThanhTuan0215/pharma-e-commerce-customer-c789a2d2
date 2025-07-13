@@ -28,6 +28,9 @@ import CatalogProductDetail from "./pages/CatalogProductDetail";
 
 const queryClient = new QueryClient();
 
+// Add custom event for notifications
+export const NEW_NOTIFICATION_EVENT = 'new-notification';
+
 const App = () => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -59,15 +62,28 @@ const App = () => {
     // Real-time notification listener
     const handleMessage = (payload: any) => {
       if (payload?.notification) {
+        // Show toast notification
         toast({
           variant: 'default',
           title: payload.notification.title,
           description: payload.notification.body,
         });
+
+        // Dispatch custom event for new notification
+        window.dispatchEvent(new CustomEvent(NEW_NOTIFICATION_EVENT, { 
+          detail: payload.notification 
+        }));
       }
     };
-    onMessageListener(handleMessage);
 
+    const unsubscribe = onMessageListener(handleMessage);
+
+    // Cleanup
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   return (
